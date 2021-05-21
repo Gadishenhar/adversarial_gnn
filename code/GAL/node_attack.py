@@ -3,7 +3,7 @@
 
 from GAL.helper import Path, os, to_device, make_dataset_1M, create_optimizer, ltensor, collate_fn, node_cls_collate_fn, get_logger, train_node_cls, test_node_cls, train_gda, test_gda
 from GAL.datasets import GDADataset, NodeClassification
-from GAL.models import SharedBilinearDecoder, GAL, NodeClassifier
+from code.GAL.models import SharedBilinearDecoder, GAL, NodeClassifier
 
 from tqdm import tqdm
 import numpy as np

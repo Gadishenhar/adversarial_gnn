@@ -2,7 +2,6 @@ from classes.approach_classes import NodeApproach, EdgeApproach
 from classes.basic_classes import GNN_TYPE
 from attacks import (NodeGNNSAttack, EdgeGNNSAttack, NodeGNNSLinfAttack, NodeGNNSDistanceAttack,
                      NodeGNNSAdversarialAttack)
-from GAL.models import GAL
 
 from enum import Enum, auto
 
@@ -43,8 +42,8 @@ class AttackMode(Enum):
         elif self is AttackMode.NODE_LINF or self is AttackMode.DISTANCE or self is AttackMode.ADVERSARIAL:
             return [NodeApproach.SINGLE]
 
-    def getGNN_TYPES(self):
-        if self is AttackMode.ADVERSARIAL and self.GAL:
+    def getGNN_TYPES(self, args=None):
+        if self is AttackMode.ADVERSARIAL and args.GAL:
             return [GNN_TYPE.GAL]
         if self is AttackMode.NODE or self is AttackMode.EDGE or self is AttackMode.NODE_LINF or \
                 self is AttackMode.DISTANCE:

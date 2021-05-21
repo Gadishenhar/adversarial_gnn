@@ -29,7 +29,7 @@ class oneGNNAttack(object):
 
         self.singleGNN = args.singleGNN
         if args.singleGNN is None:
-            self.gnn_types = args.attMode.getGNN_TYPES()
+            self.gnn_types = args.attMode.getGNN_TYPES(args=args)
         else:
             self.gnn_types = [args.singleGNN]
 

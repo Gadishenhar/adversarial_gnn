@@ -3,7 +3,7 @@
 
 from GAL.helper import Path, os, to_device, make_dataset_1M, create_optimizer, ltensor, collate_fn, node_cls_collate_fn, get_logger, train_node_cls, test_node_cls, train_gda, test_gda
 from GAL.datasets import GDADataset, NodeClassification
-from GAL.models import SharedBilinearDecoder, NeighborClassifier, GNN, GAL_Neighbor, NodeClassifier
+from code.GAL.models import SharedBilinearDecoder, NhopClassifier, GNN, GAL_Nhop, NodeClassifier, NeighborClassifier
 
 from tqdm import tqdm
 import numpy as np
@@ -31,7 +31,7 @@ def run(args):
 
     def get_model():
         decoder = SharedBilinearDecoder(args.num_rel, 2, args.embed_dim).to(args.device)
-        model = GAL_Neighbor(decoder, args.embed_dim, args.num_ent, edges, args).to(args.device)
+        model = GAL_Nhop(decoder, args.embed_dim, args.num_ent, edges, args, hop=args.hop).to(args.device)
         return model, decoder
 
     if args.prefetch_to_gpu:
@@ -47,8 +47,6 @@ def run(args):
     args.logger.info('Lambda: {}'.format(args.lambda_reg))
 
     model, decoder = get_model()
-
-    #for i in model.named_parameters(): print(i[0])
 
     optimizer_task = create_optimizer([
                                 {'params': model.encoder.parameters()},
@@ -75,7 +73,7 @@ def run(args):
         gc.collect()
 
     embeddings = model.encode(None).detach().squeeze(0)
-    attacker = NeighborClassifier(args.embed_dim, embeddings, edges).cuda()
+    attacker = NeighborClassifier(args.embed_dim, embeddings, edges).cuda() #NhopClassifier(args.embed_dim, embeddings, edges, hop=args.hop).cuda()
     optimizer_attacker_gender = create_optimizer(attacker.gender.parameters(), 'adam', args.lr)
 
     args.logger.info('Gender Neighbor Adversary')
@@ -140,7 +138,7 @@ def run(args):
         gc.collect()
 
     embeddings = model.encode(None).detach().squeeze(0)
-    attacker = NeighborClassifier(args.embed_dim, embeddings, edges).cuda()
+    attacker = NeighborClassifier(args.embed_dim, embeddings, edges).cuda() #NhopClassifier(args.embed_dim, embeddings, edges, hop=args.hop).cuda()
     optimizer_attacker_age = create_optimizer(attacker.age.parameters() ,'adam', args.lr)
 
     args.logger.info('Age Neighbor Adversary')
@@ -203,7 +201,7 @@ def run(args):
         gc.collect()
 
     embeddings = model.encode(None).detach().squeeze(0)
-    attacker = NeighborClassifier(args.embed_dim, embeddings, edges).cuda()
+    attacker = NeighborClassifier(args.embed_dim, embeddings, edges).cuda() #NhopClassifier(args.embed_dim, embeddings, edges, hop=args.hop).cuda()
     optimizer_attacker_occupation = create_optimizer(attacker.occupation.parameters(), 'adam', args.lr) 
 
     args.logger.info('Occupation Neighbor Adversary')

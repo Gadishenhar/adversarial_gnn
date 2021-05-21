@@ -1,18 +1,16 @@
 # -*- coding: utf-8 -*-
 
-from GAL.helper import os, Path, to_device, make_dataset_1M, create_optimizer, ltensor, collate_fn, node_cls_collate_fn, \
-    get_logger, train_node_cls, test_node_cls, train_gda, test_gda
+from GAL.helper import create_optimizer, collate_fn, node_cls_collate_fn, \
+    train_node_cls, test_node_cls
 from GAL.helper import train_gcmc, test_gcmc
-from GAL.datasets import GDADataset, NodeClassification, KBDataset
-from GAL.models import SharedBilinearDecoder, NodeClassifier, GNN, SimpleGCMC
+from GAL.datasets import NodeClassification, KBDataset
+from code.GAL.models import SharedBilinearDecoder, NodeClassifier, SimpleGCMC
 
 from tqdm import tqdm
-import numpy as np
 import torch
-import itertools
 import gc
 import numpy as np
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
 
 
 def run(args):

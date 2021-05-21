@@ -1,9 +1,8 @@
 from classes.basic_classes import GNN_TYPE, DataSet
 from classes.attack_class import AttackMode
-
+import sys
 from argparse import ArgumentParser
 from torch.cuda import set_device
-
 
 if __name__ == '__main__':
     parser = ArgumentParser()
