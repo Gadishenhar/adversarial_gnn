@@ -32,6 +32,7 @@ class Model(torch.nn.Module):
         for in_channel, out_channel in zip(all_channels[:-1], all_channels[1:]):
             self.layers.append(gnn_type.get_layer(in_dim=in_channel, out_dim=out_channel, edges=self.edge_index, args=args).to(device))
 
+        print("im here and my gnn_type is", gnn_type)
         self.name = gnn_type.string()
         self.num_layers = num_layers
         self.device = device

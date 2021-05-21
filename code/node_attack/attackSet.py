@@ -76,8 +76,9 @@ def printAttackHeader(attack, approach):
 
     # the general print header
     targeted_attack_str = 'Targeted' if attack.targeted else 'Untargeted'
-    print("######################## " + distance_log + targeted_attack_str + " " + approach.string() + " " +
-          attack.model_wrapper.model.name + " Attack ########################", flush=True)
+    if attack.mode.isDistance():
+        print("######################## " + distance_log + targeted_attack_str + " " + approach.string() + " " +
+              attack.model_wrapper.model.name + " Attack ########################", flush=True)
     info = "######################## Max Attack Epochs:" + str(attack.attack_epochs)
     if attack.l_inf is not None:
         info += " Linf:{:.2f}".format(attack.l_inf)

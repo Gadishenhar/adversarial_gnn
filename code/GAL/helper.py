@@ -35,7 +35,7 @@ sys.path.append('../')
 
 
 def to_device(tensor):
-    if tensor is not None: return tensor.to("cuda")
+    if tensor is not None: return tensor#.to("cuda")
 
 
 def make_dataset_1M(load_sidechannel=False):

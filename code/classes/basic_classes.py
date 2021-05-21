@@ -4,7 +4,7 @@ from torch_geometric.nn import GCNConv
 from classes.modified_gat import ModifiedGATConv
 from classes.modified_gin import ModifiedGINConv
 from classes.modified_sage import ModifiedSAGEConv
-from GAL.models import GAL
+from GAL.models import GAL, SharedBilinearDecoder
 
 num_of_twitter_nodes = 4972 + 2  # TODO - verify this
 
@@ -88,6 +88,8 @@ class GNN_TYPE(Enum):
             return "SAGE"
         elif self is GNN_TYPE.GIN:
             return "GIN"
+        elif self is GNN_TYPE.GAL:
+            return "GAL"
 
     @staticmethod
     def convertGNN_TYPEListToStringList(gnn_list):
