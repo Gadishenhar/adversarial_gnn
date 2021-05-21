@@ -26,7 +26,9 @@ if __name__ == '__main__':
 
     parser.add_argument("--seed", dest="seed", type=int, default=0, required=False)
 
-    parser.add_argument('--gpu', type=int, required=False)
+    parser.add_argument('--gpu', dest="gpu", type=int, required=False)
+    parser.add_argument('--GAL', dest="GAL", type=bool, default=False, required=False)
+    parser.add_argument('--GAL_gnn_type', dest="GAL_gnn_type", type=str, default="GATConv", required=False)
 
     args = parser.parse_args()
     if args.gpu is not None:

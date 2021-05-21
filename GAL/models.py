@@ -312,8 +312,8 @@ class GAL(SimpleGCMC):
     def __init__(self, decoder, embed_dim, num_ent, edges, args, encoder=None):
         super(GAL, self).__init__(decoder, embed_dim, num_ent, encoder=None)
         
-        self.gnn = GNN(self.embed_dim, args.gnn_layers, args.gnn_type, args.device)
-        self.edges = edges.cuda()
+        self.gnn = GNN(self.embed_dim, args.num_layers, args.GAL_gnn_type, args.gpu)
+        self.edges = edges#.cuda()
 
         h = embed_dim
 

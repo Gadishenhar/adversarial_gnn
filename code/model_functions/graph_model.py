@@ -12,7 +12,7 @@ import copy
 
 
 class Model(torch.nn.Module):
-    def __init__(self, gnn_type, num_layers, dataset, device):
+    def __init__(self, gnn_type, num_layers, dataset, device, args):
         super(Model, self).__init__()
         self.attack = False
         self.layers = nn.ModuleList().to(device)
@@ -28,13 +28,13 @@ class Model(torch.nn.Module):
         all_channels = [num_initial_features] + hidden_dims + [num_final_features]
 
         # gcn layers
+        self.edge_index = dataset.data.edge_index.to(device)
         for in_channel, out_channel in zip(all_channels[:-1], all_channels[1:]):
-            self.layers.append(gnn_type.get_layer(in_dim=in_channel, out_dim=out_channel).to(device))
+            self.layers.append(gnn_type.get_layer(in_dim=in_channel, out_dim=out_channel, edges=self.edge_index, args=args).to(device))
 
         self.name = gnn_type.string()
         self.num_layers = num_layers
         self.device = device
-        self.edge_index = dataset.data.edge_index.to(device)
         self.edge_weight = None
 
     def forward(self, x=None):
@@ -55,8 +55,8 @@ class Model(torch.nn.Module):
 
 
 class NodeModel(Model):
-    def __init__(self, gnn_type, num_layers, dataset, device):
-        super(NodeModel, self).__init__(gnn_type, num_layers, dataset, device)
+    def __init__(self, gnn_type, num_layers, dataset, device, args):
+        super(NodeModel, self).__init__(gnn_type, num_layers, dataset, device, args)
         data = dataset.data
         node_attribute_list = []
         for idx in range(data.x.shape[0]):
@@ -74,8 +74,8 @@ class NodeModel(Model):
 
 
 class EdgeModel(Model):
-    def __init__(self, gnn_type, num_layers, dataset, device):
-        super(EdgeModel, self).__init__(gnn_type, num_layers, dataset, device)
+    def __init__(self, gnn_type, num_layers, dataset, device, args):
+        super(EdgeModel, self).__init__(gnn_type, num_layers, dataset, device, args)
         data = dataset.data
         self.x = data.x.to(device)
         self.edge_weight = torch.nn.Parameter(torch.ones(data.edge_index.shape[1]), requires_grad=False).to(device)
@@ -118,13 +118,13 @@ class EdgeModel(Model):
 
 
 class ModelWrapper(object):
-    def __init__(self, node_model, gnn_type, num_layers, dataset, patience, device, seed):
+    def __init__(self, node_model, gnn_type, num_layers, dataset, patience, device, seed, args):
         self.gnn_type = gnn_type
         self.num_layers = num_layers
         if node_model:
-            self.model = NodeModel(gnn_type, num_layers, dataset, device)
+            self.model = NodeModel(gnn_type, num_layers, dataset, device, args)
         else:
-            self.model = EdgeModel(gnn_type, num_layers, dataset, device)
+            self.model = EdgeModel(gnn_type, num_layers, dataset, device, args)
         self.node_model = node_model
         self.patience = patience
         self.device = device
@@ -180,8 +180,8 @@ class ModelWrapper(object):
 
 
 class AdversarialModelWrapper(ModelWrapper):
-    def __init__(self, node_model, gnn_type, num_layers, dataset, patience, device, seed):
-        super(AdversarialModelWrapper, self).__init__(node_model, gnn_type, num_layers, dataset, patience, device, seed)
+    def __init__(self, node_model, gnn_type, num_layers, dataset, patience, device, seed, args):
+        super(AdversarialModelWrapper, self).__init__(node_model, gnn_type, num_layers, dataset, patience, device, seed, args)
 
     # override
     def _setLR(self):

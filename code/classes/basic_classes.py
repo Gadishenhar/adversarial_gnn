@@ -4,6 +4,9 @@ from torch_geometric.nn import GCNConv
 from classes.modified_gat import ModifiedGATConv
 from classes.modified_gin import ModifiedGINConv
 from classes.modified_sage import ModifiedSAGEConv
+from GAL.models import GAL
+
+num_of_twitter_nodes = 4972 + 2  # TODO - verify this
 
 
 class Print(Enum):
@@ -52,6 +55,7 @@ class GNN_TYPE(Enum):
     GAT = auto()
     SAGE = auto()
     GIN = auto()
+    GAL = auto()
 
     @staticmethod
     def from_string(s):
@@ -60,7 +64,7 @@ class GNN_TYPE(Enum):
         except KeyError:
             raise ValueError()
 
-    def get_layer(self, in_dim, out_dim):
+    def get_layer(self, in_dim, out_dim, args=None, edges=None):
         if self is GNN_TYPE.GCN:
             return GCNConv(in_channels=in_dim, out_channels=out_dim)
         elif self is GNN_TYPE.GAT:
@@ -71,6 +75,9 @@ class GNN_TYPE(Enum):
             sequential = nn.Sequential(nn.Linear(in_dim, out_dim), nn.BatchNorm1d(out_dim), nn.ReLU(),
                                        nn.Linear(out_dim, out_dim), nn.BatchNorm1d(out_dim), nn.ReLU())
             return ModifiedGINConv(sequential)
+        elif self is GNN_TYPE.GAL:
+            decoder = SharedBilinearDecoder(num_relations=5, num_weights=2, embed_dim=in_dim)
+            return GAL(decoder, num_ent=num_of_twitter_nodes, embed_dim=in_dim, edges=edges, args=args)
 
     def string(self):
         if self is GNN_TYPE.GCN:

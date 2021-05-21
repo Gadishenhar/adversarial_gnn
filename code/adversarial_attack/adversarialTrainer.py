@@ -1,6 +1,7 @@
-from node_attack.attackSet import attackSet
-from node_attack.attackTrainer import test
-from classes.basic_classes import Print
+from ..node_attack.attackSet import attackSet
+from ..node_attack.attackTrainer import test
+from ..classes.basic_classes import Print
+from GAL.models import GAL_Nhop, GAL, GAL_Neighbor, GNN, GNNWithNoise, NhopClassifier
 
 import torch.nn.functional as F
 import copy

@@ -21,6 +21,7 @@ class oneGNNAttack(object):
         self.end_to_file = '.csv'
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         seed = args.seed
+        self.args = args
 
         self.mode = args.attMode
         dataset = GraphDataset(args.dataset, device)
@@ -259,6 +260,9 @@ class NodeGNNSAdversarialAttack(NodeGNNSAttack):
         self.Ktrain = self.attack_epochs
         self.Ktests = [1] + list(range(10, 110, 10))
         self.approach = self.approaches[0]
+        self.GAL = False
+        if args.GAL:
+            self.GAL = True
 
     # a must-create / overriding Node
     def saveResults(self, results):
@@ -289,11 +293,11 @@ class NodeGNNSAdversarialAttack(NodeGNNSAttack):
         if self.Ktrain != 0:
             self.model_wrapper = AdversarialModelWrapper(node_model=True, gnn_type=gnn_type, num_layers=self.num_layers,
                                                          dataset=self.dataset, patience=self.patience,
-                                                         device=self.device, seed=self.seed)
+                                                         device=self.device, seed=self.seed, args=self.args)
         else:
             self.model_wrapper = ModelWrapper(node_model=True, gnn_type=gnn_type, num_layers=self.num_layers,
                                               dataset=self.dataset, patience=self.patience,
-                                              device=self.device, seed=self.seed)
+                                              device=self.device, seed=self.seed, args=self.args)
         printAttackHeader(attack=self, approach=self.approach)
         print('######################## Creating/Loading an Adversarial Model with Ktrain: {:02d}'.format(self.Ktrain) +
               ' ########################', flush=True)
