@@ -12,6 +12,7 @@ from torchvision import transforms
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from datasets.twitter_dataset import TweeterDataset
+
 ##########################
 ### SETTINGS
 ##########################
@@ -24,26 +25,26 @@ generator_learning_rate = 0.001
 discriminator_learning_rate = 0.001
 # NUM_EPOCHS = 100
 BATCH_SIZE = 128
-LATENT_DIM = 100 # latent vectors dimension [z]
-IMG_SHAPE = (1, 28, 28) # MNIST has 1 color channel, each image 28x8 pixels
+LATENT_DIM = 100  # latent vectors dimension [z]
+IMG_SHAPE = (1, 28, 28)  # MNIST has 1 color channel, each image 28x8 pixels
 IMG_SIZE = 1
 
 for x in IMG_SHAPE:
     IMG_SIZE *= x
 
 train_dataset = datasets.MNIST(root='./datasets',
-                            train=True,
-                            transform=transforms.ToTensor(),
-                            download=True)
+                               train=True,
+                               transform=transforms.ToTensor(),
+                               download=True)
 test_dataset = datasets.MNIST(root='./datasets',
-                           train=False,
-                           transform=transforms.ToTensor())
+                              train=False,
+                              transform=transforms.ToTensor())
 train_loader = DataLoader(dataset=train_dataset,
-                       batch_size=BATCH_SIZE,
-                       shuffle=True)
+                          batch_size=BATCH_SIZE,
+                          shuffle=True)
 test_loader = DataLoader(dataset=test_dataset,
-                      batch_size=BATCH_SIZE,
-                      shuffle=False)
+                         batch_size=BATCH_SIZE,
+                         shuffle=False)
 # constant the seed
 torch.manual_seed(random_seed)
 # build the model, send it ti the device
@@ -56,6 +57,7 @@ optim_discr = torch.optim.Adam(model.discriminator.parameters(), lr=discriminato
 
 def something():
     raise NotImplementedError
+
 
 class GAN(torch.nn.Module):
     def __init__(self):
@@ -72,16 +74,16 @@ class GAN(torch.nn.Module):
 
         # discriminator: image [matrix] -> label (0-fake, 1-real)
         self.discriminator = nn.Sequential(
-        nn.Linear(IMG_SIZE, 128),
-        nn.LeakyReLU(inplace=True),
-        nn.Dropout(p=0.5),
-        nn.Linear(128, 1),
-        nn.Sigmoid()
+            nn.Linear(IMG_SIZE, 128),
+            nn.LeakyReLU(inplace=True),
+            nn.Dropout(p=0.5),
+            nn.Linear(128, 1),
+            nn.Sigmoid()
         )
 
     def generator_forward(self, z):
-         img = self.generator(z)
-         return img
+        img = self.generator(z)
+        return img
 
     def discriminator_forward(self, img):
         pred = model.discriminator(img)
@@ -101,16 +103,16 @@ class GANTrainer:
                  dataset=TweeterDataset('data/'),
                  lam=0.5,
                  patience=math.inf
-                ):
-        self.att_model     = att_model
-        self.att_optimzer  = att_optimzer
-        self.def_model     = def_model
-        self.def_optimzer  = def_optimzer
-        self.dataset       = dataset
-        self.att_loss_fn   = att_loss_fn
-        self.def_loss_fn   = def_loss_fn
-        self.lam           = lam
-        self.patience      = patience
+                 ):
+        self.att_model = att_model
+        self.att_optimzer = att_optimzer
+        self.def_model = def_model
+        self.def_optimzer = def_optimzer
+        self.dataset = dataset
+        self.att_loss_fn = att_loss_fn
+        self.def_loss_fn = def_loss_fn
+        self.lam = lam
+        self.patience = patience
 
     def train(self, epochs):
 
@@ -130,7 +132,6 @@ class GANTrainer:
         # Define early stopping vraibles
         ################################
         patience_counter, best_val_accuracy = 0, 0
-
 
         self.start_time = time.time()
         self.discr_costs = []
@@ -158,20 +159,20 @@ class GANTrainer:
             print('Total Training Time: %.2f min' % ((time.time() - self.start_time) / 60))
 
             # save weigths and preform test pass
-                # Saving attack weights
+            # Saving attack weights
             torch.save(self.att_model.state_dict(), checkpoint_att_filename)
             print(
                 f"*** Saved checkpoint {checkpoint_att_filename} " f"at epoch {epoch + 1}"
             )
-                # Saving defence weights
+            # Saving defence weights
             torch.save(self.def_model.state_dict(), checkpoint_def_filename)
             print(
                 f"*** Saved checkpoint {checkpoint_def_filename} " f"at epoch {epoch + 1}"
             )
 
-            test_result = self.test()
+            att_loss, real_loss, fake_loss, def_loss = self.test()
 
-            val_acc = test_result[0]
+            val_acc = def_loss
             if val_acc > best_val_accuracy:
                 best_val_accuracy = val_acc
                 patience_counter = 0
@@ -179,7 +180,6 @@ class GANTrainer:
                 patience_counter += 1
             if patience_counter >= self.patience:
                 break
-
 
     def foreach_epoch(self):
         ### FORWARD PASS AND BACKPROPAGATION
@@ -191,7 +191,7 @@ class GANTrainer:
         # Freezing defender weights
         # SINGLE attacking the current network
 
-        #TODO do we pass over the whole dataset as the network input?
+        # TODO do we pass over the whole dataset as the network input?
         attack_output = self.att_model.forward(self.dataset.data)
 
         # creating tagging for loss
@@ -201,7 +201,7 @@ class GANTrainer:
 
         # Loss for fooling the GAL
         # TODO: think if running with no_grad()?
-        # TODO: Create network with attack node and no tagging as
+        # TODO: Create network with attack node and no tagging
         def_pred = self.def_model.forward(attack_output)
 
         # here we use the `valid` labels because we want the defender to "think"
@@ -217,13 +217,16 @@ class GANTrainer:
         # --------------------------
 
         # Freezing Attacker weights
-
+        # TODO get labels from data
+        real_tagging = something(self.dataset.data)
+        # Real forward pass
         def_tagging_real = self.def_model.forward(self.dataset.data)
-        real_loss = self.def_loss_fn(def_tagging_real, valid)
-        #TODO generate the currect tagging for the network with attack node
-        currect_tagging_attacked = something(valid, attack_output)
+        real_loss = self.def_loss_fn(def_tagging_real, real_tagging)
 
+        # TODO generate the currect tagging for the network with attack node
+        currect_tagging_attacked = something(real_tagging, attack_output)
         # here we use the `fake` labels when training the discriminator
+        # TODO: Create network with attack node and no tagging
         def_tagging_attacked = self.def_model.forward(attack_output)
         fake_loss = self.def_loss_fn(def_tagging_attacked, currect_tagging_attacked)
 
@@ -231,14 +234,33 @@ class GANTrainer:
         self.def_optimzer.zero_grad()
         def_loss.backward()
         self.def_optimzer.step()
+
         return att_loss, def_loss
 
     def test(self):
         with torch.no_grad():
-            something()
+            # TODO do we pass over the whole dataset as the network input?
+            attack_output = self.att_model.forward(self.dataset.data.test)  # TODO - get test dataset
+            fake_valid = something(self.dataset.data.test, attack_output)  # TODO - get test dataset
+            # TODO: create the valid network with valid tagging on the attack node
+            # TODO: think if running with no_grad()?
+            # TODO: Create network with attack node and no tagging
+            def_pred = self.def_model.forward(attack_output)
+            att_loss = self.att_loss_fn(def_pred, fake_valid)
+
+            # TODO get labels from data
+            real_tagging = something(self.dataset.data.test)  # TODO - get test dataset
+            def_tagging_real = self.def_model.forward(self.dataset.data.test)  # TODO - get test dataset
+            real_loss = self.def_loss_fn(def_tagging_real, real_tagging)
+
+            # TODO generate the currect tagging for the network with attack node
+            currect_tagging_attacked = something(real_tagging, attack_output)
+            fake_loss = self.def_loss_fn(def_pred, currect_tagging_attacked)
+            def_loss = ((1 - self.lam) * real_loss + self.lam * fake_loss)
+
+            return att_loss, real_loss, fake_loss, def_loss
 
         return
-
 
     def evaluate(self):
 
@@ -260,4 +282,3 @@ class GANTrainer:
         ax2.spines['bottom'].set_position(('outward', 45))
         ax2.set_xlabel('Epochs')
         ax2.set_xlim(ax1.get_xlim())
-
