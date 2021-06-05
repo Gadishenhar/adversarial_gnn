@@ -121,10 +121,10 @@ class GANTrainer:
         #########################
         checkpoint_def = "def_model_weights"
         checkpoint_att = "att_model_weights"
-        checkpoint_def_filename = f"{checkpoint_def}{str(time.time())}.pt"
+        checkpoint_def_filename = f"{checkpoint_def}{str(time.time())}"
         print(checkpoint_def)
         Path(os.path.dirname(checkpoint_def_filename)).mkdir(exist_ok=True)
-        checkpoint_att_filename = f"{checkpoint_att}{str(time.time())}.pt"
+        checkpoint_att_filename = f"{checkpoint_att}{str(time.time())}"
         print(checkpoint_att)
         Path(os.path.dirname(checkpoint_att_filename)).mkdir(exist_ok=True)
 
@@ -137,8 +137,10 @@ class GANTrainer:
         self.discr_costs = []
         self.gener_costs = []
 
+        best_att_val_filename = None
+        best_def_val_filename = None
         for epoch in range(epochs):
-            model = model.train()
+            # model = model.train()
             # for batch_idx, (features, targets) in enumerate(train_loader):
             #     features = (features - 0.5) * 2.0  # normalize between [-1, 1]
             # features = features.view(-1, IMG_SIZE).to(device)
@@ -160,14 +162,14 @@ class GANTrainer:
 
             # save weigths and preform test pass
             # Saving attack weights
-            torch.save(self.att_model.state_dict(), checkpoint_att_filename)
+            torch.save(self.att_model.state_dict(), checkpoint_att_filename + f"_{epoch}.pt")
             print(
-                f"*** Saved checkpoint {checkpoint_att_filename} " f"at epoch {epoch + 1}"
+                f"*** Saved attack checkpoint {checkpoint_att_filename}_{epoch}.pt at epoch {epoch + 1}"
             )
             # Saving defence weights
-            torch.save(self.def_model.state_dict(), checkpoint_def_filename)
+            torch.save(self.def_model.state_dict(), checkpoint_def_filename + f"_{epoch}.pt")
             print(
-                f"*** Saved checkpoint {checkpoint_def_filename} " f"at epoch {epoch + 1}"
+                f"*** Saved defense checkpoint {checkpoint_def_filename}_{epoch}.pt at epoch {epoch + 1}"
             )
 
             att_loss, real_loss, fake_loss, def_loss = self.test()
@@ -175,11 +177,15 @@ class GANTrainer:
             val_acc = def_loss
             if val_acc > best_val_accuracy:
                 best_val_accuracy = val_acc
+                best_att_val_filename = f"{checkpoint_att_filename}_{epoch}.pt"
+                best_def_val_filename = f"{checkpoint_def_filename}_{epoch}.pt"
                 patience_counter = 0
             else:
                 patience_counter += 1
             if patience_counter >= self.patience:
                 break
+
+        print(f"best accuracy weights are saved in {best_att_val_filename} and {best_def_val_filename}")
 
     def foreach_epoch(self):
         ### FORWARD PASS AND BACKPROPAGATION
