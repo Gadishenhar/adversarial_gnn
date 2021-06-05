@@ -64,7 +64,7 @@ class GNN_TYPE(Enum):
         except KeyError:
             raise ValueError()
 
-    def get_layer(self, in_dim, out_dim, args=None, edges=None):
+    def ge_layer(self, in_dim, out_dim, args=None, edges=None):
         if self is GNN_TYPE.GCN:
             return GCNConv(in_channels=in_dim, out_channels=out_dim)
         elif self is GNN_TYPE.GAT:

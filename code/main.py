@@ -5,9 +5,8 @@ from argparse import ArgumentParser
 from torch.cuda import set_device
 import torch
 from dataset_functions.graph_dataset import GraphDataset
-from datasets.twitter_dataset import TweeterDataset
-from code.model_functions import NodeModel
-from ..GAN import GANTrainer
+from dataset_functions.twitter_dataset import TwitterDataset
+from GAN import GANTrainer
 from GAL.models import GAL, SharedBilinearDecoder
 
 def main():
@@ -61,7 +60,8 @@ def main():
     # train the models:
     trainer = GANTrainer(att_model=att_model, att_optimzer=att_adam_optimizer, def_model=def_model,
                          def_optimzer=def_adam_optimizer, dataset=TweeterDataset('data/'))
-
+    trainer.train(num_of_epochs=args.attEpochs)
+    trainer.evaluate(args.attEpochs)
 
 if __name__ == '__main__':
     main()

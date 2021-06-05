@@ -11,7 +11,7 @@ from torchvision import datasets
 from torchvision import transforms
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from datasets.twitter_dataset import TweeterDataset
+from dataset_functions.twitter_dataset import TwitterDataset
 
 ##########################
 ### SETTINGS
@@ -23,36 +23,35 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 random_seed = 123
 generator_learning_rate = 0.001
 discriminator_learning_rate = 0.001
-# NUM_EPOCHS = 100
 BATCH_SIZE = 128
 LATENT_DIM = 100  # latent vectors dimension [z]
 IMG_SHAPE = (1, 28, 28)  # MNIST has 1 color channel, each image 28x8 pixels
 IMG_SIZE = 1
 
-for x in IMG_SHAPE:
-    IMG_SIZE *= x
+# for x in IMG_SHAPE:
+#     IMG_SIZE *= x
 
-train_dataset = datasets.MNIST(root='./datasets',
-                               train=True,
-                               transform=transforms.ToTensor(),
-                               download=True)
-test_dataset = datasets.MNIST(root='./datasets',
-                              train=False,
-                              transform=transforms.ToTensor())
-train_loader = DataLoader(dataset=train_dataset,
-                          batch_size=BATCH_SIZE,
-                          shuffle=True)
-test_loader = DataLoader(dataset=test_dataset,
-                         batch_size=BATCH_SIZE,
-                         shuffle=False)
+# train_dataset = datasets.MNIST(root='./datasets',
+#                                train=True,
+#                                transform=transforms.ToTensor(),
+#                                download=True)
+# test_dataset = datasets.MNIST(root='./datasets',
+#                               train=False,
+#                               transform=transforms.ToTensor())
+# train_loader = DataLoader(dataset=train_dataset,
+#                           batch_size=BATCH_SIZE,
+#                           shuffle=True)
+# test_loader = DataLoader(dataset=test_dataset,
+#                          batch_size=BATCH_SIZE,
+#                          shuffle=False)
 # constant the seed
 torch.manual_seed(random_seed)
 # build the model, send it ti the device
-model = GAN().to(device)
+# model = GAN().to(device)
 # optimizers: we have one for the generator and one for the discriminator
 # that way, we can update only one of the modules, while the other one is "frozen"
-optim_gener = torch.optim.Adam(model.generator.parameters(), lr=generator_learning_rate)
-optim_discr = torch.optim.Adam(model.discriminator.parameters(), lr=discriminator_learning_rate)
+# optim_gener = torch.optim.Adam(model.generator.parameters(), lr=generator_learning_rate)
+# optim_discr = torch.optim.Adam(model.discriminator.parameters(), lr=discriminator_learning_rate)
 
 
 def something():
@@ -100,7 +99,7 @@ class GANTrainer:
     def __init__(self, att_model, att_optimzer, def_model, def_optimzer,
                  att_loss_fn=binary_cross_entropy,
                  def_loss_fn=binary_cross_entropy,
-                 dataset=TweeterDataset('data/'),
+                 dataset=TwitterDataset('twitter-dataset/data/'),
                  lam=0.5,
                  patience=math.inf
                  ):
@@ -114,7 +113,7 @@ class GANTrainer:
         self.lam = lam
         self.patience = patience
 
-    def train(self, epochs):
+    def train(self, num_of_epochs):
 
         #########################
         # Define checkpoint files
@@ -139,7 +138,7 @@ class GANTrainer:
 
         best_att_val_filename = None
         best_def_val_filename = None
-        for epoch in range(epochs):
+        for epoch in range(num_of_epochs):
             # model = model.train()
             # for batch_idx, (features, targets) in enumerate(train_loader):
             #     features = (features - 0.5) * 2.0  # normalize between [-1, 1]
@@ -268,17 +267,17 @@ class GANTrainer:
 
         return
 
-    def evaluate(self):
+    def evaluate(self, num_of_epochs):
 
         ax1 = plt.subplot(1, 1, 1)
-        ax1.plot(range(len(self.gener_costs)), self.gener_costs, label='Generator loss')
-        ax1.plot(range(len(self.discr_costs)), self.discr_costs, label='Discriminator loss')
+        ax1.plot(range(len(self.gener_costs)), self.gener_costs, label='Attacker loss')
+        ax1.plot(range(len(self.discr_costs)), self.discr_costs, label='Defender loss')
         ax1.set_xlabel('Iterations')
         ax1.set_ylabel('Loss')
         ax1.legend()
         # Set scond x-axis
         ax2 = ax1.twiny()
-        newlabel = list(range(NUM_EPOCHS + 1))
+        newlabel = list(range(num_of_epochs + 1))
         iter_per_epoch = len(train_loader)
         newpos = [e * iter_per_epoch for e in newlabel]
         ax2.set_xticklabels(newlabel[::10])

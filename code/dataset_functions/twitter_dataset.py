@@ -1,10 +1,15 @@
 import torch
 from torch_geometric.data import Data, InMemoryDataset
 import numpy as np
+import pandas as pd
 
 
 def read_edge_index():
-    with open('./data/users.edges') as f:
+    with open('datasets/twitter/processed/processed_hate_data.dataset', 'rb') as f:
+        data = f.read()
+        print(data)
+
+    with open('datasets/twitter/processed/processed_hate_data.dataset/users.edges') as f:
         edges_str = f.read().splitlines()
         edge_int = []
         for edge in edges_str:
