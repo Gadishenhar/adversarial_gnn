@@ -8,24 +8,28 @@ import networkx as nx
 from torch_geometric.nn import GCNConv, ChebConv, SAGEConv, GINConv, GATConv
 import warnings
 
+
 class GNN(torch.nn.Module):
     def __init__(self, embed, gnn_layers, gnn_type, device):
         super(GNN, self).__init__()
         h = embed
 
         def get_layer(gnn_type):
-            if gnn_type == 'ChebConv': layer = ChebConv(h, h, K=2)
-            elif gnn_type == 'GCNConv': layer = GCNConv(h,h)
+            if gnn_type == 'ChebConv':
+                layer = ChebConv(h, h, K=2)
+            elif gnn_type == 'GCNConv':
+                layer = GCNConv(h, h)
             elif gnn_type == 'GINConv':
                 dnn = nn.Sequential(nn.Linear(h, h),
-                                        nn.LeakyReLU(),
-                                        nn.Linear(h, h))
+                                    nn.LeakyReLU(),
+                                    nn.Linear(h, h))
                 layer = GINConv(dnn)
             elif gnn_type == 'SAGEConv':
-                layer = SAGEConv(h,h, normalize=True)
+                layer = SAGEConv(h, h, normalize=True)
             elif gnn_type == 'GATConv':
-                layer = GATConv(h,h)
-            else: raise NotImplementedError
+                layer = GATConv(h, h)
+            else:
+                raise NotImplementedError
             return layer
 
         self.conv1 = None
@@ -46,11 +50,13 @@ class GNN(torch.nn.Module):
 
         return embeddings
 
+
 class SharedBilinearDecoder(nn.Module):
     """
     Decoder where the relationship score is given by a bilinear form
     between the embeddings (i.e., one learned matrix per relationship type).
     """
+
     def __init__(self, num_relations, num_weights, embed_dim):
         super(SharedBilinearDecoder, self).__init__()
         self.rel_embeds = nn.Embedding(num_weights, embed_dim * embed_dim)
@@ -102,6 +108,7 @@ class SharedBilinearDecoder(nn.Module):
             ''' j+1 because of zero index '''
             preds += (j + 1) * torch.exp(torch.index_select(outputs, 1, index))
         return loss, preds
+
 
 class OurGAL(nn.Module):
     def __init__(self, decoder, embed_dim, num_ent, edges, args, encoder=None, hop=2):
