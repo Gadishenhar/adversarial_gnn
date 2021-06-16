@@ -8,6 +8,8 @@ from dataset_functions.graph_dataset import GraphDataset
 from dataset_functions.twitter_dataset import TwitterDataset
 from GAN import GANTrainer
 from GAL.models import GAL, SharedBilinearDecoder
+from model_functions.graph_model import NodeModel
+
 
 def main():
 
@@ -51,7 +53,7 @@ def main():
     all_channels = [num_initial_features] + hidden_dims + [num_final_features]
 
     # create GNNs and optimizers:
-    att_model = NodeModel(gnn_type=GNN_TYPE.GCN, num_layers=num_layers, dataset=dataset, device=device, args=args)
+    att_model = NodeModel(gnn_type=args.attMode.getGNN_TYPES(args=args), num_layers=num_layers, dataset=dataset, device=device, args=args)
     decoder = SharedBilinearDecoder(num_relations=5, num_weights=2, embed_dim=num_initial_features)
     def_model = GAL(decoder, num_ent=num_of_twitter_nodes, embed_dim=num_initial_features, edges=edges, args=args)
     att_adam_optimizer = torch.optim.Adam(att_model.parameters(), lr=0.0001)
@@ -59,7 +61,7 @@ def main():
 
     # train the models:
     trainer = GANTrainer(att_model=att_model, att_optimzer=att_adam_optimizer, def_model=def_model,
-                         def_optimzer=def_adam_optimizer, dataset=TweeterDataset('data/'))
+                         def_optimzer=def_adam_optimizer)
     trainer.train(num_of_epochs=args.attEpochs)
     trainer.evaluate(args.attEpochs)
 
