@@ -7,7 +7,7 @@ import torch.nn.functional as F
 import networkx as nx
 from torch_geometric.nn import GCNConv, ChebConv, SAGEConv, GINConv, GATConv
 import warnings
-
+from torch.nn import Sequential, ReLU, Linear
 
 def to_device(tensor):
     if tensor is not None: return tensor  # .to("cuda")
@@ -631,3 +631,55 @@ class NhopClassifier(nn.Module):
             loss = fn_occupation(occupation_pred, occupation)
 
         return loss, [age_pred, gender_pred, occupation_pred]
+
+
+class Net(torch.nn.Module):
+    def __init__(self, dataset, name='GCNConv'):
+        super(Net, self).__init__()
+        self.name = name
+        self.data = dataset[0]
+        if (name == 'GCNConv'):
+            self.conv1 = GCNConv(dataset.num_features, 128)
+            self.conv2 = GCNConv(128, 64)
+        elif (name == 'ChebConv'):
+            self.conv1 = ChebConv(dataset.num_features, 128, K=2)
+            self.conv2 = ChebConv(128, 64, K=2)
+        elif (name == 'GATConv'):
+            self.conv1 = GATConv(dataset.num_features, 128)
+            self.conv2 = GATConv(128, 64)
+        elif (name == 'GINConv'):
+            nn1 = Sequential(Linear(dataset.num_features, 128), ReLU(), Linear(128, 64))
+            self.conv1 = GINConv(nn1)
+            self.bn1 = torch.nn.BatchNorm1d(64)
+            nn2 = Sequential(Linear(64, 64), ReLU(), Linear(64, 64))
+            self.conv2 = GINConv(nn2)
+            self.bn2 = torch.nn.BatchNorm1d(64)
+
+        self.attr = GCNConv(64, dataset.num_classes, cached=True)
+
+        self.attack = GCNConv(64, dataset.num_classes, cached=True)
+        self.reverse = GradientReversalLayer()
+
+    def forward(self, pos_edge_index, neg_edge_index):
+
+        if self.name == 'GINConv':
+            x = F.relu(self.conv1(self.data.x, self.data.train_pos_edge_index))
+            x = self.bn1(x)
+            x = F.relu(self.conv2(x, self.data.train_pos_edge_index))
+            x = self.bn2(x)
+        else:
+            x = F.relu(self.conv1(self.data.x, self.data.train_pos_edge_index))
+            x = self.conv2(x, self.data.train_pos_edge_index)
+
+        attr = self.attr(x, edge_index, edge_weight)
+
+        attack = self.reverse(x)
+        att = self.attack(attack, edge_index, edge_weight)
+
+        total_edge_index = torch.cat([pos_edge_index, neg_edge_index], dim=-1)
+        x_j = torch.index_select(x, 0, total_edge_index[0])
+        x_i = torch.index_select(x, 0, total_edge_index[1])
+
+        res = torch.einsum("ef,ef->e", x_i, x_j)
+
+        return res, F.log_softmax(attr, dim=1), F.log_softmax(att, dim=1)
