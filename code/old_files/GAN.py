@@ -12,6 +12,8 @@ from torchvision import transforms
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from dataset_functions.twitter_dataset import TwitterDataset
+from dataset_functions.graph_dataset import GraphDataset
+from classes.basic_classes import DataSet
 
 ##########################
 ### SETTINGS
@@ -46,6 +48,8 @@ IMG_SIZE = 1
 #                          shuffle=False)
 # constant the seed
 torch.manual_seed(random_seed)
+
+
 # build the model, send it ti the device
 # model = GAN().to(device)
 # optimizers: we have one for the generator and one for the discriminator
@@ -58,48 +62,47 @@ def something():
     raise NotImplementedError
 
 
-class GAN(torch.nn.Module):
-    def __init__(self):
-        super(GAN, self).__init__()
-
-        # generator: z [vector] -> image [matrix]
-        self.generator = nn.Sequential(
-            nn.Linear(LATENT_DIM, 128),
-            nn.LeakyReLU(inplace=True),
-            nn.Dropout(p=0.5),
-            nn.Linear(128, IMG_SIZE),
-            nn.Tanh()
-        )
-
-        # discriminator: image [matrix] -> label (0-fake, 1-real)
-        self.discriminator = nn.Sequential(
-            nn.Linear(IMG_SIZE, 128),
-            nn.LeakyReLU(inplace=True),
-            nn.Dropout(p=0.5),
-            nn.Linear(128, 1),
-            nn.Sigmoid()
-        )
-
-    def generator_forward(self, z):
-        img = self.generator(z)
-        return img
-
-    def discriminator_forward(self, img):
-        pred = model.discriminator(img)
-        return pred.view(-1)
-
-    def discriminator_forward(self, img):
-        pred = model.discriminator(img)
-        return pred.view(-1)
-        start_time = time.time()
+# class GAN(torch.nn.Module):
+#     def __init__(self):
+#         super(GAN, self).__init__()
+#
+#         # generator: z [vector] -> image [matrix]
+#         self.generator = nn.Sequential(
+#             nn.Linear(LATENT_DIM, 128),
+#             nn.LeakyReLU(inplace=True),
+#             nn.Dropout(p=0.5),
+#             nn.Linear(128, IMG_SIZE),
+#             nn.Tanh()
+#         )
+#
+#         # discriminator: image [matrix] -> label (0-fake, 1-real)
+#         self.discriminator = nn.Sequential(
+#             nn.Linear(IMG_SIZE, 128),
+#             nn.LeakyReLU(inplace=True),
+#             nn.Dropout(p=0.5),
+#             nn.Linear(128, 1),
+#             nn.Sigmoid()
+#         )
+#
+#     def generator_forward(self, z):
+#         img = self.generator(z)
+#         return img
+#
+#     def discriminator_forward(self, img):
+#         pred = model.discriminator(img)
+#         return pred.view(-1)
+#
+#     def discriminator_forward(self, img):
+#         pred = model.discriminator(img)
+#         return pred.view(-1)
+#         start_time = time.time()
 
 
 class GANTrainer:
-
     def __init__(self, att_model, att_optimzer, def_model, def_optimzer,
                  att_loss_fn=binary_cross_entropy,
                  def_loss_fn=binary_cross_entropy,
-                 dataset=TwitterDataset('twitter-dataset/data/'),
+                 dataset=GraphDataset(DataSet.TWITTER, device),
                  lam=0.5,
                  patience=math.inf
                  ):
@@ -287,3 +290,11 @@ class GANTrainer:
         ax2.spines['bottom'].set_position(('outward', 45))
         ax2.set_xlabel('Epochs')
         ax2.set_xlim(ax1.get_xlim())
+
+
+def main():
+    pass
+
+
+if __name__ != '__main__':
+    main()
