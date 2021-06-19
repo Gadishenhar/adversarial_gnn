@@ -8,6 +8,9 @@ import networkx as nx
 from torch_geometric.nn import GCNConv, ChebConv, SAGEConv, GINConv, GATConv
 import warnings
 from torch.nn import Sequential, ReLU, Linear
+import os
+from helper import *
+from torch_geometric.datasets import Planetoid
 
 def to_device(tensor):
     if tensor is not None: return tensor  # .to("cuda")
@@ -637,7 +640,10 @@ class Net(torch.nn.Module):
     def __init__(self, dataset, name='GCNConv'):
         super(Net, self).__init__()
         self.name = name
-        self.data = dataset[0]
+        # self.dataset_path = os.path.join(getGitPath(), 'datasets')
+        # self.dataset = Planetoid(self.dataset_path, 'pubmed')
+        self.dataset = dataset
+        self.data = self.dataset[0]
         self.edge_index = self.data.edge_index
         self.edge_weight = self.data.edge_attr
         if (name == 'GCNConv'):

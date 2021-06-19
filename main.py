@@ -36,7 +36,7 @@ def main():
     # Load the data set:
     if args.dataset == 'pubmed':
         dataset_path = os.path.join(getGitPath(), 'datasets')
-        dataset = Planetoid(dataset_path, args.dataset)
+        dataset = Planetoid(dataset_path, args.dataset, transform=T.NormalizeFeatures())
         num_nodes = dataset.data.num_nodes
         num_edges = dataset.data.num_edges
         edges = dataset.data.edge_index
