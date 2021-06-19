@@ -27,7 +27,6 @@ def main():
     decoder = SharedBilinearDecoder(args.num_relations, args.num_weights, embed_dim)
     model = OurGAL(decoder, embed_dim, num_nodes, edges, args, encoder=None, hop=num_hops)  # passing
     # encoder=None makes the model use the default nn.Embedding encoder
-    pass
 
 
 if __name__ == '__main__':
