@@ -28,6 +28,9 @@ def main():
     parser.add_argument("-dataset", dest="dataset", default='pubmed', required=False)
     parser.add_argument("-batch", dest="batch", default=256, required=False)
     parser.add_argument("-lr", dest="lr", default=0.01, required=False)
+    parser.add_argument("-use_gdc", dest="use_gdc", default=False, required=False)
+    parser.add_argument("-num_epochs", dest="num_epochs", default=50, required=False)
+    parser.add_argument("-finetune_epochs", dest="finetune_epochs", default=10, required=False)
     args = parser.parse_args()
 
     # Load the data set:
@@ -82,9 +85,6 @@ def main():
     torch.backends.cudnn.benchmark = False
     os.environ['PYTHONHASHSEED'] = str(args.seed)
 
-    dataset = args.dataset
-    path = osp.join(osp.dirname(osp.realpath(__file__)), '..', 'data', dataset)
-    dataset = Planetoid(path, dataset, T.NormalizeFeatures())
     data = dataset[0]
 
     if args.use_gdc:
@@ -95,8 +95,8 @@ def main():
                                                dim=0), exact=True)
         data = gdc(data)
 
-    labels = data.y.cuda()
-    edge_index, edge_weight = data.edge_index.cuda(), data.edge_attr
+    labels = data.y
+    edge_index, edge_weight = data.edge_index, data.edge_attr
 
     print(labels.size())
     # Train/validation/test
@@ -105,9 +105,9 @@ def main():
     print(labels)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model, data = Net(m).to(device), data.to(device)
+    model, data = Net(dataset, m).to(device), data.to(device)
 
-    if (m == 'GINConv'):
+    if m == 'GINConv':
         optimizer = torch.optim.Adam([
             dict(params=model.conv1.parameters(), weight_decay=0),
             dict(params=model.bn1.parameters(), weight_decay=0),
@@ -120,7 +120,7 @@ def main():
             dict(params=model.conv2.parameters(), weight_decay=0)
         ], lr=args.lr)
 
-    if (m == 'GINConv'):
+    if m == 'GINConv':
         optimizer_att = torch.optim.Adam([
             dict(params=model.conv2.parameters(), weight_decay=5e-4),
             dict(params=model.bn2.parameters(), weight_decay=0),
@@ -182,7 +182,7 @@ def main():
         return perfs
 
     best_val_perf = test_perf = 0
-    for epoch in range(1, args.num_epochs + 1):
+    for epoch in range(1, int(args.num_epochs) + 1):
         train_loss = train()
         val_perf, tmp_test_perf = test()
         if val_perf > best_val_perf:
@@ -259,11 +259,6 @@ def main():
         print(log.format(epoch, train_acc, val_acc, tmp_test_acc))
 
     print(res)
-
-    # define the attack model:
-    train_fairness_set =
-    # embeddings = defense_model.encode(None).detach().squeeze(0)
-    # attack_model = NhopClassifier(embed_dim, embeddings, edges)
 
 if __name__ == '__main__':
     main()

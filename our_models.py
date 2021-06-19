@@ -638,6 +638,8 @@ class Net(torch.nn.Module):
         super(Net, self).__init__()
         self.name = name
         self.data = dataset[0]
+        self.edge_index = self.data.edge_index
+        self.edge_weight = self.data.edge_attr
         if (name == 'GCNConv'):
             self.conv1 = GCNConv(dataset.num_features, 128)
             self.conv2 = GCNConv(128, 64)
@@ -671,10 +673,10 @@ class Net(torch.nn.Module):
             x = F.relu(self.conv1(self.data.x, self.data.train_pos_edge_index))
             x = self.conv2(x, self.data.train_pos_edge_index)
 
-        attr = self.attr(x, edge_index, edge_weight)
+        attr = self.attr(x, self.edge_index, self.edge_weight)
 
         attack = self.reverse(x)
-        att = self.attack(attack, edge_index, edge_weight)
+        att = self.attack(attack, self.edge_index, self.edge_weight)
 
         total_edge_index = torch.cat([pos_edge_index, neg_edge_index], dim=-1)
         x_j = torch.index_select(x, 0, total_edge_index[0])
