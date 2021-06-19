@@ -14,7 +14,7 @@ def to_device(tensor):
 
 
 class GNN(torch.nn.Module):
-    def __init__(self, embed, gnn_layers, gnn_type, device):
+    def __init__(self, embed, gnn_layers, gnn_type):
         super(GNN, self).__init__()
         h = embed
 
@@ -186,7 +186,7 @@ class GAL(SimpleGCMC):
     def __init__(self, decoder, embed_dim, num_ent, edges, args, encoder=None):
         super(GAL, self).__init__(decoder, embed_dim, num_ent, encoder=None)
 
-        self.gnn = GNN(self.embed_dim, args.num_layers, args.GAL_gnn_type, args.gpu)
+        self.gnn = GNN(self.embed_dim, args.num_layers, args.GAL_gnn_type)
         self.edges = edges  # .cuda()
 
         h = embed_dim
@@ -253,7 +253,7 @@ class GNNWithNoise(SimpleGCMC):
     def __init__(self, decoder, embed_dim, num_ent, edges, args, encoder=None):
         super(GNNWithNoise, self).__init__(decoder, embed_dim, num_ent, encoder=None)
 
-        self.gnn = GNN(self.embed_dim, args.gnn_layers, args.gnn_type, args.device)
+        self.gnn = GNN(self.embed_dim, args.num_layers, args.gnn_type)
         self.edges = edges.cuda()
 
         h = embed_dim
