@@ -637,57 +637,56 @@ class NhopClassifier(nn.Module):
 
 
 class Net(torch.nn.Module):
-    def __init__(self, dataset, name='GCNConv'):
+    def __init__(self, edge_index, edge_weight, data, num_classes, name='GCNConv'):
         super(Net, self).__init__()
         self.name = name
-        # self.dataset_path = os.path.join(getGitPath(), 'datasets')
-        # self.dataset = Planetoid(self.dataset_path, 'pubmed')
-        self.dataset = dataset
-        self.data = self.dataset[0]
-        self.edge_index = self.data.edge_index
+        self.data = data
+        self.edge_index = edge_index
+        self.edge_weight = edge_weight
+        print(type(self.edge_index))
         self.edge_weight = self.data.edge_attr
         if (name == 'GCNConv'):
-            self.conv1 = GCNConv(dataset.num_features, 128)
+            self.conv1 = GCNConv(self.data.num_features, 128)
             self.conv2 = GCNConv(128, 64)
         elif (name == 'ChebConv'):
-            self.conv1 = ChebConv(dataset.num_features, 128, K=2)
+            self.conv1 = ChebConv(self.data.num_features, 128, K=2)
             self.conv2 = ChebConv(128, 64, K=2)
         elif (name == 'GATConv'):
-            self.conv1 = GATConv(dataset.num_features, 128)
+            self.conv1 = GATConv(self.data.num_features, 128)
             self.conv2 = GATConv(128, 64)
         elif (name == 'GINConv'):
-            nn1 = Sequential(Linear(dataset.num_features, 128), ReLU(), Linear(128, 64))
+            nn1 = Sequential(Linear(self.data.num_features, 128), ReLU(inplace=False), Linear(128, 64))
             self.conv1 = GINConv(nn1)
             self.bn1 = torch.nn.BatchNorm1d(64)
-            nn2 = Sequential(Linear(64, 64), ReLU(), Linear(64, 64))
+            nn2 = Sequential(Linear(64, 64), ReLU(inplace=False), Linear(64, 64))
             self.conv2 = GINConv(nn2)
             self.bn2 = torch.nn.BatchNorm1d(64)
 
-        self.attr = GCNConv(64, dataset.num_classes, cached=True)
+        self.attr = GCNConv(64, num_classes, cached=True)
 
-        self.attack = GCNConv(64, dataset.num_classes, cached=True)
+        self.attack = GCNConv(64, num_classes, cached=True)
         self.reverse = GradientReversalLayer()
 
     def forward(self, pos_edge_index, neg_edge_index):
+        with torch.autograd.set_detect_anomaly(True):
+            if self.name == 'GINConv':
+                x1 = F.relu(self.conv1(self.data.x, self.data.train_pos_edge_index), inplace=False)
+                x2 = self.bn1(x1)
+                x3 = F.relu(self.conv2(x2, self.data.train_pos_edge_index), inplace=False)
+                y = self.bn2(x3)
+            else:
+                x1 = F.relu(self.conv1(self.data.x, self.data.train_pos_edge_index), inplace=False)
+                y = self.conv2(x1, self.data.train_pos_edge_index)
 
-        if self.name == 'GINConv':
-            x = F.relu(self.conv1(self.data.x, self.data.train_pos_edge_index))
-            x = self.bn1(x)
-            x = F.relu(self.conv2(x, self.data.train_pos_edge_index))
-            x = self.bn2(x)
-        else:
-            x = F.relu(self.conv1(self.data.x, self.data.train_pos_edge_index))
-            x = self.conv2(x, self.data.train_pos_edge_index)
+            attr = self.attr(y, self.edge_index, self.edge_weight)
 
-        attr = self.attr(x, self.edge_index, self.edge_weight)
+            attack = self.reverse(y)
+            att = self.attack(attack, self.edge_index, self.edge_weight)
 
-        attack = self.reverse(x)
-        att = self.attack(attack, self.edge_index, self.edge_weight)
+            total_edge_index = torch.cat([pos_edge_index, neg_edge_index], dim=-1)
+            x_j = torch.index_select(y, 0, total_edge_index[0])
+            x_i = torch.index_select(y, 0, total_edge_index[1])
 
-        total_edge_index = torch.cat([pos_edge_index, neg_edge_index], dim=-1)
-        x_j = torch.index_select(x, 0, total_edge_index[0])
-        x_i = torch.index_select(x, 0, total_edge_index[1])
-
-        res = torch.einsum("ef,ef->e", x_i, x_j)
+            res = torch.einsum("ef,ef->e", x_i, x_j)
 
         return res, F.log_softmax(attr, dim=1), F.log_softmax(att, dim=1)
