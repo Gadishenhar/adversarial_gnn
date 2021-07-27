@@ -122,10 +122,11 @@ class oneGNNAttack(object):
     def attackOneApproach(self, approach):
         raise NotImplementedError
 
-    def defineWrapper(self):
-        self.model_wrapper = ModelWrapper(node_model=self.mode.isNodeModel(), gnn_type=GNN_TYPE.GCN,
+    def defineWrapper(self, args):
+        self.model_wrapper = ModelWrapper(node_model=self.mode.isNodeModel(), gnn_type=args.singleGNN,
                                           num_layers=self.num_layers, dataset=self.dataset, patience=self.patience,
-                                          device=self.device, seed=self.seed)
+                                          device=self.device, seed=self.seed,args=args)
+        return self.model_wrapper.model
 
 class NodeGNNSAttack(oneGNNAttack):
     def __init__(self, args, start_to_file=None, print_answer=None):

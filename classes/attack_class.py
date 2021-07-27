@@ -1,6 +1,6 @@
 from classes.approach_classes import NodeApproach, EdgeApproach
 from classes.basic_classes import GNN_TYPE
-from ..attacks import (NodeGNNSAttack, EdgeGNNSAttack, NodeGNNSLinfAttack, NodeGNNSDistanceAttack,
+from attacks import (NodeGNNSAttack, EdgeGNNSAttack, NodeGNNSLinfAttack, NodeGNNSDistanceAttack,
                      NodeGNNSAdversarialAttack)
 
 from enum import Enum, auto

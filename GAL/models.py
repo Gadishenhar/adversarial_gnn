@@ -1,42 +1,59 @@
+import sys
+sys.path.append('C:/Users/gadis/PycharmProjects/Graph-Adversarial-Networks/Movielens/helper')
+from GAL.helper import to_device, make_dataset_1M, create_optimizer, ltensor, collate_fn, get_logger
+
+import logging
+from logging import config
+import json
+import random
+from random import shuffle
+import argparse
+from pprint import pprint
+from pathlib import Path
+import sys
+import os
+import gc
 import math
+import ipdb
 from tqdm import tqdm
 import numpy as np
+import pandas as pd
+import adabound
+from sklearn.metrics import confusion_matrix
+from sklearn.preprocessing import OneHotEncoder
+from sklearn import preprocessing
+from sklearn.metrics import f1_score, accuracy_score, roc_auc_score
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.optim as optim
+from torch.autograd import Function
+from torch.utils.data import Dataset, DataLoader
 import networkx as nx
 from torch_geometric.nn import GCNConv, ChebConv, SAGEConv, GINConv, GATConv
+import itertools
 import warnings
-from torch.nn import Sequential, ReLU, Linear
-import os
-from helper import *
-from torch_geometric.datasets import Planetoid
-
-def to_device(tensor):
-    if tensor is not None: return tensor  # .to("cuda")
 
 
 class GNN(torch.nn.Module):
-    def __init__(self, embed, gnn_layers, gnn_type):
+    def __init__(self, embed, gnn_layers, gnn_type, device):
         super(GNN, self).__init__()
         h = embed
 
         def get_layer(gnn_type):
-            if gnn_type == 'ChebConv':
-                layer = ChebConv(h, h, K=2)
-            elif gnn_type == 'GCNConv':
-                layer = GCNConv(h, h)
-            elif gnn_type == 'GINConv':
+            if gnn_type == 'ChebConv': layer = ChebConv(h, h, K=2)
+            elif gnn_type == 'GCNConv': layer = GCNConv(h,h)
+            elif gnn_type == 'GINConv': 
                 dnn = nn.Sequential(nn.Linear(h, h),
-                                    nn.LeakyReLU(),
-                                    nn.Linear(h, h))
+                                        nn.LeakyReLU(),
+                                        nn.Linear(h, h))
                 layer = GINConv(dnn)
             elif gnn_type == 'SAGEConv':
-                layer = SAGEConv(h, h, normalize=True)
+                layer = SAGEConv(h,h, normalize=True)
             elif gnn_type == 'GATConv':
-                layer = GATConv(h, h)
-            else:
-                raise NotImplementedError
+                layer = GATConv(h,h)
+            else: raise NotImplementedError
             return layer
 
         self.conv1 = None
@@ -57,13 +74,11 @@ class GNN(torch.nn.Module):
 
         return embeddings
 
-
 class GradReverse(torch.autograd.Function):
     """
     Implement the gradient reversal layer for the convenience of domain adaptation neural network.
     The forward part is the identity function while the backward part is the negative function.
     """
-
     @staticmethod
     def forward(ctx, x):
         return x.view_as(x)
@@ -72,7 +87,6 @@ class GradReverse(torch.autograd.Function):
     def backward(ctx, grad_output):
         return grad_output.neg()
 
-
 class GradientReversalLayer(nn.Module):
     def __init__(self):
         super(GradientReversalLayer, self).__init__()
@@ -80,13 +94,11 @@ class GradientReversalLayer(nn.Module):
     def forward(self, inputs):
         return GradReverse.apply(inputs)
 
-
 class SharedBilinearDecoder(nn.Module):
     """
     Decoder where the relationship score is given by a bilinear form
     between the embeddings (i.e., one learned matrix per relationship type).
     """
-
     def __init__(self, num_relations, num_weights, embed_dim):
         super(SharedBilinearDecoder, self).__init__()
         self.rel_embeds = nn.Embedding(num_weights, embed_dim * embed_dim)
@@ -139,6 +151,118 @@ class SharedBilinearDecoder(nn.Module):
             preds += (j + 1) * torch.exp(torch.index_select(outputs, 1, index))
         return loss, preds
 
+class NodeClassifier(nn.Module):
+    def __init__(self, embed_dim, embeddings):
+        super(NodeClassifier, self).__init__()
+        self.embeddings = embeddings
+        self.mode = None
+        h = embed_dim
+
+        self.age = nn.Sequential(
+            nn.Linear(h, 32),
+            nn.LeakyReLU(),
+            nn.Linear(32, 32),
+            nn.LeakyReLU(),
+            nn.Linear(32, 7))
+
+        self.occupation = nn.Sequential(
+            nn.Linear(h, 32),
+            nn.LeakyReLU(),
+            nn.Linear(32, 32),
+            nn.LeakyReLU(),
+            nn.Linear(32, 21))
+
+        self.gender = nn.Sequential(
+            nn.Linear(h, 32),
+            nn.LeakyReLU(),
+            nn.Linear(32, 32),
+            nn.LeakyReLU(),
+            nn.Linear(32, 1)
+        )
+
+    def set_mode(self, mode):
+        self.mode = mode
+
+    def forward(self, features):
+        (user, gender, occupation, age) = features
+
+        embeddings = self.embeddings[user]
+
+        age_pred = self.age(embeddings)
+        gender_pred = self.gender(embeddings)
+        occupation_pred = self.occupation(embeddings)
+
+        fn_gender = nn.BCEWithLogitsLoss()
+        fn_age = nn.CrossEntropyLoss()
+        fn_occupation = nn.CrossEntropyLoss()
+
+        if (self.mode == 'gender'):
+            loss = fn_gender(gender_pred, gender.float())
+        elif (self.mode == 'age'):
+            loss = fn_age(age_pred, age)
+        elif (self.mode == 'occupation'):
+            loss = fn_occupation(occupation_pred, occupation)
+
+        return loss, [age_pred, gender_pred, occupation_pred]
+
+class NodeClassifierWithNoise(nn.Module):
+    def __init__(self, embed_dim, embeddings):
+        super(NodeClassifierWithNoise, self).__init__()
+        self.embeddings = embeddings
+        self.mode = None
+        h = embed_dim
+
+        self.age = nn.Sequential(
+            nn.Linear(h, 32),
+            nn.LeakyReLU(),
+            nn.Linear(32, 32),
+            nn.LeakyReLU(),
+            nn.Linear(32, 7))
+
+        self.occupation = nn.Sequential(
+            nn.Linear(h, 32),
+            nn.LeakyReLU(),
+            nn.Linear(32, 32),
+            nn.LeakyReLU(),
+            nn.Linear(32, 21))
+
+        self.gender = nn.Sequential(
+            nn.Linear(h, 32),
+            nn.LeakyReLU(),
+            nn.Linear(32, 32),
+            nn.LeakyReLU(),
+            nn.Linear(32, 1)
+        )
+
+    def gaussian(self, tensor, mean=0, stddev=0.75):
+        noise = mean + stddev* torch.randn(tensor.size()).cuda()
+        return tensor + noise
+
+    def set_mode(self, mode):
+        self.mode = mode
+
+    def forward(self, features):
+        (user, gender, occupation, age) = features
+
+        embeddings = self.embeddings[user]
+        embeddings = self.gaussian(embeddings)
+
+        age_pred = self.age(embeddings)
+        gender_pred = self.gender(embeddings)
+        occupation_pred = self.occupation(embeddings)
+
+        fn_gender = nn.BCEWithLogitsLoss()
+        fn_age = nn.CrossEntropyLoss()
+        fn_occupation = nn.CrossEntropyLoss()
+
+        if (self.mode == 'gender'):
+            loss = fn_gender(gender_pred, gender.float())
+        elif (self.mode == 'age'):
+            loss = fn_age(age_pred, age)
+        elif (self.mode == 'occupation'):
+            loss = fn_occupation(occupation_pred, occupation)
+
+        return loss, [age_pred, gender_pred, occupation_pred]
 
 class SimpleGCMC(nn.Module):
     def __init__(self, decoder, embed_dim, num_ent, encoder=None):
@@ -156,10 +280,10 @@ class SimpleGCMC(nn.Module):
             self.encoder = encoder
         self.all_nodes = to_device(torch.LongTensor(list(range(9992))))
 
-    def encode(self, nodes):
+    def encode(self, nodes):     
         embs = self.encoder(self.all_nodes)
         embs = self.batchnorm(embs)
-        if (embs is None): return embs
+        if ( embs is None ): return embs
         return embs[nodes]
 
     def predict_rel(self, heads, tails_embed):
@@ -184,13 +308,12 @@ class SimpleGCMC(nn.Module):
     def load(self, fn):
         self.load_state_dict(torch.load(fn))
 
-
 class GAL(SimpleGCMC):
     def __init__(self, decoder, embed_dim, num_ent, edges, args, encoder=None):
         super(GAL, self).__init__(decoder, embed_dim, num_ent, encoder=None)
-
-        self.gnn = GNN(self.embed_dim, args.num_layers, args.GAL_gnn_type)
-        self.edges = edges  # .cuda()
+        
+        self.gnn = GNN(self.embed_dim, args.num_layers, args.GAL_gnn_type, args.gpu)
+        self.edges = edges#.cuda()
 
         h = embed_dim
 
@@ -227,7 +350,7 @@ class GAL(SimpleGCMC):
         if (embs is None): return embs
         return embs[nodes]
 
-    def forward_attr(self, user_features, weights=None, return_embeds=False, ):
+    def forward_attr(self, user_features, weights=None, return_embeds=False,):
         (users, gender, occupation, age) = user_features
         user_embeds = self.reverse(self.encode(users))
 
@@ -251,12 +374,11 @@ class GAL(SimpleGCMC):
     def set_mode(self, mode):
         self.mode = mode
 
-
 class GNNWithNoise(SimpleGCMC):
     def __init__(self, decoder, embed_dim, num_ent, edges, args, encoder=None):
         super(GNNWithNoise, self).__init__(decoder, embed_dim, num_ent, encoder=None)
-
-        self.gnn = GNN(self.embed_dim, args.num_layers, args.gnn_type)
+        
+        self.gnn = GNN(self.embed_dim, args.gnn_layers, args.gnn_type, args.device)
         self.edges = edges.cuda()
 
         h = embed_dim
@@ -284,10 +406,11 @@ class GNNWithNoise(SimpleGCMC):
             nn.Linear(32, 1)
         )
 
+
         self.reverse = GradientReversalLayer()
 
     def gaussian(self, tensor, mean=0, stddev=0.75):
-        noise = mean + stddev * torch.randn(tensor.size()).cuda()
+        noise = mean + stddev* torch.randn(tensor.size()).cuda()
         return tensor + noise
 
     def encode(self, nodes):
@@ -298,7 +421,7 @@ class GNNWithNoise(SimpleGCMC):
         if (embs is None): return embs
         return self.gaussian(embs[nodes])
 
-    def forward_attr(self, user_features, weights=None, return_embeds=False, ):
+    def forward_attr(self, user_features, weights=None, return_embeds=False,):
         (users, gender, occupation, age) = user_features
         user_embeds = self.reverse(self.encode(users))
 
@@ -321,7 +444,6 @@ class GNNWithNoise(SimpleGCMC):
 
     def set_mode(self, mode):
         self.mode = mode
-
 
 class NeighborClassifier(nn.Module):
     def __init__(self, embed_dim, embeddings, edges):
@@ -355,7 +477,7 @@ class NeighborClassifier(nn.Module):
         edges_np = edges.numpy()
         edge_list = []
         for i in tqdm(range(edges_np.shape[1])):
-            edge_list.append((edges_np[0, i], edges_np[1, i]))
+            edge_list.append((edges_np[0,i], edges_np[1,i]))
         self.G = nx.Graph(edge_list)
 
     def set_mode(self, mode):
@@ -392,18 +514,17 @@ class NeighborClassifier(nn.Module):
 
         return loss, [age_pred, gender_pred, occupation_pred]
 
-
 class GAL_Neighbor(GAL):
     def __init__(self, decoder, embed_dim, num_ent, edges, args, encoder=None):
         super(GAL_Neighbor, self).__init__(decoder, embed_dim, num_ent, edges, args, encoder=None)
-
+        
         edges_np = edges.numpy()
         edge_list = []
         for i in tqdm(range(edges_np.shape[1])):
-            edge_list.append((edges_np[0, i], edges_np[1, i]))
+            edge_list.append((edges_np[0,i], edges_np[1,i]))
         self.G = nx.Graph(edge_list)
-
-    def forward_attr(self, user_features, weights=None, return_embeds=False, ):
+   
+    def forward_attr(self, user_features, weights=None, return_embeds=False,):
         (users, gender, occupation, age) = user_features
 
         neighbor = []
@@ -414,9 +535,9 @@ class GAL_Neighbor(GAL):
             for i in self.G.neighbors(user):
                 neighbor.append(i)
                 break
-
+        
         neighbor = torch.tensor(np.array(neighbor)).cuda()
-
+                
         user_embeds = self.reverse(self.encode(neighbor))
 
         fn_gender = nn.BCEWithLogitsLoss()
@@ -437,28 +558,28 @@ class GAL_Neighbor(GAL):
         return loss_adv, (age_pred, gender_pred, occupation_pred)
 
 
-class OurGAL(GAL):
+class GAL_Nhop(GAL):
     def __init__(self, decoder, embed_dim, num_ent, edges, args, encoder=None, hop=2):
-        super(OurGAL, self).__init__(decoder, embed_dim, num_ent, edges, args, encoder=None)
-
+        super(GAL_Nhop, self).__init__(decoder, embed_dim, num_ent, edges, args, encoder=None)
+        
         edges_np = edges.numpy()
         print(edges_np.max())
         edge_list = []
         for i in tqdm(range(edges_np.shape[1])):
-            edge_list.append((edges_np[0, i], edges_np[1, i]))
+            edge_list.append((edges_np[0,i], edges_np[1,i]))
         self.G = nx.Graph(edge_list)
         self.hop = hop
 
-    def forward_attr(self, user_features, weights=None, return_embeds=False, ):
+    def forward_attr(self, user_features, weights=None, return_embeds=False,):
         (users, gender, occupation, age) = user_features
 
         neighbor_sub = []
 
         user_np = list(users.cpu().numpy())
-
-        k = 0
-        include_indices = []
-        ign_indices = []
+        
+        k=0
+        include_indices=[]
+        ign_indices=[]
         ign_str = "failed vertices: "
         for user in user_np:
             final = user
@@ -469,21 +590,21 @@ class OurGAL(GAL):
                 orig_len = L(neighbor)
 
                 cond = True
-                cand = neighbor.pop(np.random.randint(0, L(neighbor)))
+                cand = neighbor.pop(np.random.randint(0, L (neighbor)))
                 if (cand in path):
 
                     # This is bounded by O(self.hop)
-                    while (L(neighbor) > 0):
-                        cand = neighbor.pop(np.random.randint(0, L(neighbor)))
+                    while(L(neighbor) > 0):
+                        cand = neighbor.pop(np.random.randint(0, L (neighbor)))
                         if (cand not in path):
                             break
-                    if (L(neighbor) == 0):
-                        ign_str += "[{} <= {}]".format(orig_len, len(path))
+                    if (L(neighbor)==0):
+                        ign_str+= "[{} <= {}]".format(orig_len, len(path))
                         cond = False
                         break
-
+                            
                 if cond:
-                    path[cand] = 0
+                    path[cand]=0
                     final = cand
                 else:
                     break
@@ -492,14 +613,14 @@ class OurGAL(GAL):
                 include_indices.append(k)
             else:
                 ign_indices.append(k)
-            k += 1
+            k+=1
 
-        include_indices = np.array(include_indices)
-        if (len(ign_indices) > 0): warnings.warn("ignoring {} from {}".format(ign_indices, ign_str), RuntimeWarning,
-                                                 stacklevel=2)
-        gender = gender[include_indices]
+
+        include_indices= np.array(include_indices)
+        if (len(ign_indices)>0): warnings.warn("ignoring {} from {}".format(ign_indices, ign_str), RuntimeWarning, stacklevel=2)
+        gender= gender[include_indices]
         age = age[include_indices]
-        occupation = occupation[include_indices]
+        occupation=occupation[include_indices]
 
         neighbor = torch.tensor(np.array(neighbor_sub)).cuda()
 
@@ -522,9 +643,8 @@ class OurGAL(GAL):
 
         return loss_adv, (age_pred, gender_pred, occupation_pred)
 
-
 class NhopClassifier(nn.Module):
-    def __init__(self, embed_dim, embeddings, edges, hop=2):
+    def __init__(self, embed_dim, embeddings, edges, hop = 2):
         super(NhopClassifier, self).__init__()
         self.embeddings = embeddings
         self.mode = None
@@ -556,7 +676,7 @@ class NhopClassifier(nn.Module):
         edges_np = edges.numpy()
         edge_list = []
         for i in tqdm(range(edges_np.shape[1])):
-            edge_list.append((edges_np[0, i], edges_np[1, i]))
+            edge_list.append((edges_np[0,i], edges_np[1,i]))
         self.G = nx.Graph(edge_list)
 
     def set_mode(self, mode):
@@ -566,12 +686,12 @@ class NhopClassifier(nn.Module):
         (user, gender, occupation, age) = features
 
         neighbor = []
-        neighbor_sub = []  ## TODO - check whether this addition works
+        neighbor_sub = [] ## TODO - check whether this addition works
         user_np = list(user.cpu().numpy())
 
-        k = 0
-        include_indices = []
-        ign_indices = []
+        k=0
+        include_indices=[]
+        ign_indices=[]
         ign_str = "failed vertices: "
         for user in user_np:
             final = user
@@ -582,21 +702,21 @@ class NhopClassifier(nn.Module):
                 orig_len = L(neighbor)
 
                 cond = True
-                cand = neighbor.pop(np.random.randint(0, L(neighbor)))
+                cand = neighbor.pop(np.random.randint(0, L (neighbor)))
                 if (cand in path):
 
                     # This is bounded by O(self.hop)
-                    while (L(neighbor) > 0):
-                        cand = neighbor.pop(np.random.randint(0, L(neighbor)))
+                    while(L(neighbor) > 0):
+                        cand = neighbor.pop(np.random.randint(0, L (neighbor)))
                         if (cand not in path):
                             break
-                    if (L(neighbor) == 0):
-                        ign_str += "[{} <= {}]".format(orig_len, len(path))
+                    if (L(neighbor)==0):
+                        ign_str+= "[{} <= {}]".format(orig_len, len(path))
                         cond = False
                         break
-
+                            
                 if cond:
-                    path[cand] = 0
+                    path[cand]=0
                     final = cand
                 else:
                     break
@@ -605,14 +725,14 @@ class NhopClassifier(nn.Module):
                 include_indices.append(k)
             else:
                 ign_indices.append(k)
-            k += 1
+            k+=1
 
-        include_indices = np.array(include_indices)
-        if (len(ign_indices) > 0): print(ign_indices)
-        # print(include_indices)
-        gender = gender[include_indices]
+        include_indices= np.array(include_indices)
+        if (len(ign_indices)>0): print(ign_indices)
+        #print(include_indices)
+        gender= gender[include_indices]
         age = age[include_indices]
-        occupation = occupation[include_indices]
+        occupation=occupation[include_indices]
 
         neighbor = neighbor_sub
 
@@ -634,61 +754,3 @@ class NhopClassifier(nn.Module):
             loss = fn_occupation(occupation_pred, occupation)
 
         return loss, [age_pred, gender_pred, occupation_pred]
-
-
-class Net(torch.nn.Module):
-    def __init__(self, edge_index, edge_weight, data, num_classes, name='GCNConv'):
-        super(Net, self).__init__()
-        self.name = name
-        self.data = data
-        self.edge_index = edge_index
-        self.edge_weight = edge_weight
-        #print(type(self.edge_index))
-        # self.edge_weight = self.data.edge_attr
-        if (name == 'GCNConv'):
-            self.conv1 = GCNConv(self.data.num_features, 128)
-            self.conv2 = GCNConv(128, 64)
-        elif (name == 'ChebConv'):
-            self.conv1 = ChebConv(self.data.num_features, 128, K=2)
-            self.conv2 = ChebConv(128, 64, K=2)
-        elif (name == 'GATConv'):
-            self.conv1 = GATConv(self.data.num_features, 128)
-            self.conv2 = GATConv(128, 64)
-        elif (name == 'GINConv'):
-            nn1 = Sequential(Linear(self.data.num_features, 128), ReLU(inplace=False), Linear(128, 64))
-            self.conv1 = GINConv(nn1)
-            self.bn1 = torch.nn.BatchNorm1d(64)
-            nn2 = Sequential(Linear(64, 64), ReLU(inplace=False), Linear(64, 64))
-            self.conv2 = GINConv(nn2)
-            self.bn2 = torch.nn.BatchNorm1d(64)
-
-        self.attr = GCNConv(64, num_classes, cached=True)
-
-        self.attack = GCNConv(64, num_classes, cached=True) # The previous attack - works
-        # self.attack =
-        self.reverse = GradientReversalLayer()
-
-    def forward(self, pos_edge_index, neg_edge_index):
-        with torch.autograd.set_detect_anomaly(True):
-            if self.name == 'GINConv':
-                x1 = F.relu(self.conv1(self.data.x.clone(), self.data.train_pos_edge_index.clone()), inplace=False)
-                x2 = self.bn1(x1.clone())
-                x3 = F.relu(self.conv2(x2.clone(), self.data.train_pos_edge_index.clone()), inplace=False)
-                y = self.bn2(x3.clone())
-            else:
-                x1 = self.conv1(self.data.x.clone(), self.data.train_pos_edge_index.clone())
-                x2 = F.relu(x1, inplace=False)
-                y = self.conv2(x2.clone(), self.data.train_pos_edge_index.clone())
-
-            attr = self.attr(y.clone(), self.edge_index, self.edge_weight)
-
-            attack = self.reverse(y)
-            att = self.attack(attack.clone(), self.edge_index, self.edge_weight)
-
-            total_edge_index = torch.cat([pos_edge_index, neg_edge_index], dim=-1)
-            x_j = torch.index_select(y, 0, total_edge_index[0])
-            x_i = torch.index_select(y, 0, total_edge_index[1])
-
-            res = torch.einsum("ef,ef->e", x_i, x_j)
-
-        return res, F.log_softmax(attr, dim=1), F.log_softmax(att, dim=1)
