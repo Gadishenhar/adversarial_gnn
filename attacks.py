@@ -123,9 +123,9 @@ class oneGNNAttack(object):
         raise NotImplementedError
 
     def defineWrapper(self, args):
-        self.model_wrapper = ModelWrapper(node_model=self.mode.isNodeModel(), gnn_type=args.singleGNN,
+        self.model_wrapper = ModelWrapper(node_model=self.mode.isNodeModel(), gnn_type=ModelWrapper,
                                           num_layers=self.num_layers, dataset=self.dataset, patience=self.patience,
-                                          device=self.device, seed=self.seed,args=args)
+                                          device=self.device, seed=self.seed, args=args)
         return self.model_wrapper.model
 
 class NodeGNNSAttack(oneGNNAttack):
@@ -265,9 +265,9 @@ class NodeGNNSAdversarialAttack(NodeGNNSAttack):
         self.Ktrain = self.attack_epochs
         self.Ktests = [1] + list(range(10, 110, 10))
         self.approach = self.approaches[0]
-        self.GAL = False
-        if args.GAL:
-            self.GAL = True
+        # self.GAL = False
+        # if args.GAL:
+        #     self.GAL = True
 
     # a must-create / overriding Node
     def saveResults(self, results):

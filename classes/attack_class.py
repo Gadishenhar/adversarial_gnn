@@ -43,8 +43,8 @@ class AttackMode(Enum):
             return [NodeApproach.SINGLE]
 
     def getGNN_TYPES(self, args=None):
-        if self is AttackMode.ADVERSARIAL and args.GAL:
-            return [GNN_TYPE.GAL]
+        # if self is AttackMode.ADVERSARIAL and args.GAL:
+        #     return [GNN_TYPE.GAL]
         if self is AttackMode.NODE or self is AttackMode.EDGE or self is AttackMode.NODE_LINF or \
                 self is AttackMode.DISTANCE:
             return [GNN_TYPE.GCN, GNN_TYPE.GAT, GNN_TYPE.GIN, GNN_TYPE.SAGE]  ## TODO - change this
