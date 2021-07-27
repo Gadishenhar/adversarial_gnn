@@ -128,7 +128,8 @@ def main():
     split_data = train_test_split_edges(data)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model, data = Net(edge_index=edge_index, edge_weight=edge_weight, data=split_data, num_classes=dataset.num_classes, name=m).to(device), data.to(device)
+    model, data = Net(edge_index=edge_index, edge_weight=edge_weight, data=split_data, num_classes=dataset.num_classes,
+                      attack=attack_model, name=m).to(device), data.to(device)
 
     if m == 'GINConv':
         optimizer = torch.optim.Adam([
