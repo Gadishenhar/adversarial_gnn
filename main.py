@@ -152,8 +152,8 @@ def main():
 
         link_logits, attr_prediction, attack_prediction = model(pos_edge_index, neg_edge_index)
         link_labels = get_link_labels(pos_edge_index, neg_edge_index)
-
-        loss = F.binary_cross_entropy_with_logits(link_logits, link_labels) + F.nll_loss(attack_prediction, labels)
+        losses = [F.binary_cross_entropy_with_logits(link_logits, link_labels), F.nll_loss(attack_prediction, labels)]
+        loss = sum(losses)  # We take into consideration both losses by summing them up
         loss.backward(retain_graph=True)
         optimizer.step()
         optimizer_att.step()
