@@ -637,7 +637,7 @@ class NhopClassifier(nn.Module):
 
 
 class Net(torch.nn.Module):
-    def __init__(self, edge_index, edge_weight, data, num_classes, name='GCNConv'):
+    def __init__(self, edge_index, edge_weight, data, num_classes, attack, name='GCNConv'):
         super(Net, self).__init__()
         self.name = name
         self.data = data
@@ -664,8 +664,8 @@ class Net(torch.nn.Module):
 
         self.attr = GCNConv(64, num_classes, cached=True)
 
-        self.attack = GCNConv(64, num_classes, cached=True) # The previous attack - works
-        # self.attack =
+        # self.attack = GCNConv(64, num_classes, cached=True) # The previous attack - works
+        self.attack = attack
         self.reverse = GradientReversalLayer()
 
     def forward(self, pos_edge_index, neg_edge_index):
@@ -683,7 +683,7 @@ class Net(torch.nn.Module):
             attr = self.attr(y.clone(), self.edge_index, self.edge_weight)
 
             attack = self.reverse(y)
-            att = self.attack(attack.clone(), self.edge_index, self.edge_weight)
+            att = self.attack(attack.clone())
 
             total_edge_index = torch.cat([pos_edge_index, neg_edge_index], dim=-1)
             x_j = torch.index_select(y, 0, total_edge_index[0])
