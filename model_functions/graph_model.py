@@ -9,10 +9,11 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 import copy
+from classes.basic_classes import GNN_TYPE, DataSet
 
 
 class Model(torch.nn.Module):
-    def __init__(self, gnn_type, num_layers, dataset, device, args):
+    def __init__(self, gnn_type, num_layers, dataset, device):
         super(Model, self).__init__()
         self.attack = False
         self.layers = nn.ModuleList().to(device)
@@ -28,9 +29,10 @@ class Model(torch.nn.Module):
         all_channels = [num_initial_features] + hidden_dims + [num_final_features]
 
         # gcn layers
+        # gnn_type = GNN_TYPE.GCN
         self.edge_index = dataset.data.edge_index.to(device)
         for in_channel, out_channel in zip(all_channels[:-1], all_channels[1:]):
-            self.layers.append(gnn_type.get_layer(in_dim=in_channel, out_dim=out_channel, edges=self.edge_index, args=args).to(device))
+            self.layers.append(gnn_type.get_layer(in_dim=in_channel, out_dim=out_channel, edges=self.edge_index).to(device))
 
         print("im here and my gnn_type is", gnn_type)
         self.name = gnn_type.string()
@@ -56,8 +58,8 @@ class Model(torch.nn.Module):
 
 
 class NodeModel(Model):
-    def __init__(self, gnn_type, num_layers, dataset, device, args):
-        super(NodeModel, self).__init__(gnn_type, num_layers, dataset, device, args)
+    def __init__(self, gnn_type, num_layers, dataset, device):
+        super(NodeModel, self).__init__(gnn_type, num_layers, dataset, device)
         data = dataset.data
         node_attribute_list = []
         for idx in range(data.x.shape[0]):
@@ -123,9 +125,10 @@ class ModelWrapper(object):
         self.gnn_type = gnn_type
         self.num_layers = num_layers
         if node_model:
-            self.model = NodeModel(gnn_type, num_layers, dataset, device, args)
+            gnn_type = args.attMode.getGNN_TYPES(args=args)[0]
+            self.model = NodeModel(gnn_type, num_layers, dataset, device)
         else:
-            self.model = EdgeModel(gnn_type, num_layers, dataset, device, args)
+            self.model = EdgeModel(gnn_type, num_layers, dataset, device)
         self.node_model = node_model
         self.patience = patience
         self.device = device
