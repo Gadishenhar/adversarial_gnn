@@ -643,8 +643,8 @@ class Net(torch.nn.Module):
         self.data = data
         self.edge_index = edge_index
         self.edge_weight = edge_weight
-        print(type(self.edge_index))
-        self.edge_weight = self.data.edge_attr
+        #print(type(self.edge_index))
+        # self.edge_weight = self.data.edge_attr
         if (name == 'GCNConv'):
             self.conv1 = GCNConv(self.data.num_features, 128)
             self.conv2 = GCNConv(128, 64)
@@ -670,18 +670,19 @@ class Net(torch.nn.Module):
     def forward(self, pos_edge_index, neg_edge_index):
         with torch.autograd.set_detect_anomaly(True):
             if self.name == 'GINConv':
-                x1 = F.relu(self.conv1(self.data.x, self.data.train_pos_edge_index), inplace=False)
-                x2 = self.bn1(x1)
-                x3 = F.relu(self.conv2(x2, self.data.train_pos_edge_index), inplace=False)
-                y = self.bn2(x3)
+                x1 = F.relu(self.conv1(self.data.x.clone(), self.data.train_pos_edge_index.clone()), inplace=False)
+                x2 = self.bn1(x1.clone())
+                x3 = F.relu(self.conv2(x2.clone(), self.data.train_pos_edge_index.clone()), inplace=False)
+                y = self.bn2(x3.clone())
             else:
-                x1 = F.relu(self.conv1(self.data.x, self.data.train_pos_edge_index), inplace=False)
-                y = self.conv2(x1, self.data.train_pos_edge_index)
+                x1 = self.conv1(self.data.x.clone(), self.data.train_pos_edge_index.clone())
+                x2 = F.relu(x1, inplace=False)
+                y = self.conv2(x2.clone(), self.data.train_pos_edge_index.clone())
 
-            attr = self.attr(y, self.edge_index, self.edge_weight)
+            attr = self.attr(y.clone(), self.edge_index, self.edge_weight)
 
             attack = self.reverse(y)
-            att = self.attack(attack, self.edge_index, self.edge_weight)
+            att = self.attack(attack.clone(), self.edge_index, self.edge_weight)
 
             total_edge_index = torch.cat([pos_edge_index, neg_edge_index], dim=-1)
             x_j = torch.index_select(y, 0, total_edge_index[0])

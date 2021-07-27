@@ -139,7 +139,7 @@ def main():
     def train():
         model.train()
         optimizer.zero_grad()
-
+        optimizer_att.zero_grad()
         x, pos_edge_index = data.x, data.train_pos_edge_index
 
         _edge_index, _ = remove_self_loops(pos_edge_index)
@@ -153,14 +153,14 @@ def main():
         link_logits, attr_prediction, attack_prediction = model(pos_edge_index, neg_edge_index)
         link_labels = get_link_labels(pos_edge_index, neg_edge_index)
 
-        loss = F.binary_cross_entropy_with_logits(link_logits, link_labels)
+        loss = F.binary_cross_entropy_with_logits(link_logits, link_labels) + F.nll_loss(attack_prediction, labels)
         loss.backward(retain_graph=True)
         optimizer.step()
-
-        optimizer_att.zero_grad()
-        loss2 = F.nll_loss(attack_prediction, labels)
-        loss2.backward()
         optimizer_att.step()
+        # optimizer_att.zero_grad()
+        # loss2 = F.nll_loss(attack_prediction, labels)
+        # loss2.backward(retain_graph=True)
+        # optimizer_att.step()
 
         return loss
 
