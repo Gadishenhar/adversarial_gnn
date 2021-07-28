@@ -17,11 +17,12 @@ class Model(torch.nn.Module):
         super(Model, self).__init__()
         self.attack = False
         self.layers = nn.ModuleList().to(device)
+        self.dataset_dim = dataset.data.x.shape[1]
 
         if dataset is DataSet.TWITTER:
             self.glove_matrix = dataset.glove_matrix.to(device)
         else:
-            self.glove_matrix = torch.eye(dataset.data.x.shape[1]).to(device)
+            self.glove_matrix = torch.eye(self.dataset_dim).to(device)
 
         num_initial_features = dataset.num_features
         num_final_features = dataset.num_classes
@@ -43,6 +44,12 @@ class Model(torch.nn.Module):
     def forward(self, x=None):
         if x is None:
             x = self.getInput().to(self.device)
+
+        # for the matrix multiplication - defining self.glove_matrix as a block matrix 64X500 composed of diagonal
+        # matrices:
+        eye = torch.eye(x.shape[1])
+        self.glove_matrix = torch.cat([eye]*8, dim=1)
+        self.glove_matrix = self.glove_matrix[:,: self.dataset_dim]
 
         x = torch.matmul(x, self.glove_matrix).to(self.device)
         for layer in self.layers[:-1]:
