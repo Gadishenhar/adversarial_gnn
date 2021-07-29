@@ -31,31 +31,33 @@ def main():
     parser.add_argument("-num_weights", dest="num_weights", default=2, required=False)
     parser.add_argument("-num_layers", dest="num_layers", default=2, required=False)
     parser.add_argument("-GAL_gnn_type", dest="GAL_gnn_type", default='GCNConv', required=False)
-    parser.add_argument("-gpu", dest="num_layers", default=2, required=False)
     parser.add_argument("-dataset", dest="dataset", default='pubmed', required=False)
     parser.add_argument("-batch", dest="batch", default=256, required=False)
     parser.add_argument("-lr", dest="lr", default=0.01, required=False)
     parser.add_argument("-use_gdc", dest="use_gdc", default=False, required=False)
     parser.add_argument("-num_epochs", dest="num_epochs", default=50, required=False)
     parser.add_argument("-finetune_epochs", dest="finetune_epochs", default=10, required=False)
-    parser.add_argument("--attMode", dest="attMode", default=AttackMode.NODE, type=AttackMode.from_string,
+    parser.add_argument("-attMode", dest="attMode", default=AttackMode.NODE, type=AttackMode.from_string,
                         choices=list(AttackMode), required=False)
-    parser.add_argument('--singleGNN', dest="singleGNN", type=GNN_TYPE.from_string, choices=list(GNN_TYPE),
+    parser.add_argument('-singleGNN', dest="singleGNN", type=GNN_TYPE.from_string, choices=list(GNN_TYPE),
                         required=False)
-    parser.add_argument("--patience", dest="patience", default=20, type=int, required=False)
-    parser.add_argument("--attEpochs", dest="attEpochs", default=20, type=int, required=False)
-    parser.add_argument("--l_inf", dest="l_inf", type=float, default=None, required=False)
-    parser.add_argument('--targeted', dest="targeted", action='store_true', required=False)
-    parser.add_argument("--distance", dest='distance', type=int, required=False)
-    parser.add_argument("--seed", dest="seed", type=int, default=0, required=False)
-    parser.add_argument('--gpu', dest="gpu", type=int, required=False)
-
+    parser.add_argument("-patience", dest="patience", default=20, type=int, required=False)
+    parser.add_argument("-attEpochs", dest="attEpochs", default=20, type=int, required=False)
+    parser.add_argument("-l_inf", dest="l_inf", type=float, default=None, required=False)
+    parser.add_argument('-targeted', dest="targeted", action='store_true', required=False)
+    parser.add_argument("-distance", dest='distance', type=int, required=False)
+    parser.add_argument("-seed", dest="seed", type=int, default=0, required=False)
+    parser.add_argument('-gpu', dest="gpu", type=int, required=False)
+    parser.add_argument("-lam", dest="lam", default=1.25, required=False)
     args = parser.parse_args()
+
+    # define the arguments for the attack
     att_args = copy.deepcopy(args)
     att_args.dataset = DataSet.PUBMED
+
+    # create attack instance based on the arguments
     attack = att_args.attMode.getAttack()
     attack = attack(att_args)
-    #attack.run()
     attack_model = attack.defineWrapper(att_args)
 
     # Load the data set:
@@ -85,7 +87,10 @@ def main():
     # for seed in [100, 200, 300, 400, 500]:
     #     for lam in [0, 1.25, 1.75]:
     #         for m in ['GINConv', 'GCNConv', 'GATConv', 'ChebConv']:
-    lam = 1.25
+
+    lam = args.lam
+    print(f"###################### LAMBDA = {lam} #########################")
+
     m = args.GAL_gnn_type
     seed = 100
 
@@ -94,6 +99,7 @@ def main():
     args.seed = seed
     args.lambda_reg = lam
 
+    # define the result dictionary
     try:
         res[m][seed][lam] = {}
     except:
@@ -109,9 +115,9 @@ def main():
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     os.environ['PYTHONHASHSEED'] = str(args.seed)
-
     data = dataset[0]
 
+    # GDC approximation for the data:
     if args.use_gdc:
         gdc = T.GDC(self_loop_weight=1, normalization_in='sym',
                     normalization_out='col',
@@ -124,10 +130,14 @@ def main():
     edge_index, edge_weight = data.edge_index, data.edge_attr
 
     print(labels.size())
-    # Train/validation/test
+
+    # Split into subsets:
     split_data = train_test_split_edges(data)
 
+    # Declare the device:
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    # Define the net:
     model, data = Net(edge_index=edge_index, edge_weight=edge_weight, data=split_data, num_classes=dataset.num_classes,
                       attack=attack_model, name=m).to(device), data.to(device)
 
@@ -183,11 +193,6 @@ def main():
         loss.backward(retain_graph=True)
         optimizer.step()
         optimizer_att.step()
-        # optimizer_att.zero_grad()
-        # loss2 = F.nll_loss(attack_prediction, labels)
-        # loss2.backward(retain_graph=True)
-        # optimizer_att.step()
-
         return loss
 
     def test():
@@ -283,6 +288,7 @@ def main():
         print(log.format(epoch, train_acc, val_acc, tmp_test_acc))
 
     print(res)
+
 
 if __name__ == '__main__':
     main()
