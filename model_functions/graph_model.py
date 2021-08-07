@@ -9,6 +9,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 import copy
+import math
 from classes.basic_classes import GNN_TYPE, DataSet
 
 
@@ -18,8 +19,9 @@ class Model(torch.nn.Module):
         self.attack = False
         self.layers = nn.ModuleList().to(device)
         self.dataset_dim = dataset.data.x.shape[1]
+        self.dataset = dataset.name.lower()
 
-        if dataset is DataSet.TWITTER:
+        if self.dataset == 'twitter':
             self.glove_matrix = dataset.glove_matrix.to(device)
         else:
             self.glove_matrix = torch.eye(self.dataset_dim).to(device)
@@ -47,9 +49,11 @@ class Model(torch.nn.Module):
 
         # for the matrix multiplication - defining self.glove_matrix as a block matrix 64X500 composed of diagonal
         # matrices:
-        eye = torch.eye(x.shape[1])
-        self.glove_matrix = torch.cat([eye]*8, dim=1)
-        self.glove_matrix = self.glove_matrix[:,: self.dataset_dim]
+        if self.dataset == "pubmed" or "citeseer" or "cora":
+            eye = torch.eye(x.shape[1])
+            mul_factor = math.ceil(self.dataset_dim / x.shape[1])
+            self.glove_matrix = torch.cat([eye]*mul_factor, dim=1)
+            self.glove_matrix = self.glove_matrix[:,: self.dataset_dim]
 
         x = torch.matmul(x, self.glove_matrix).to(self.device)
         for layer in self.layers[:-1]:

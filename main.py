@@ -53,7 +53,12 @@ def main():
 
     # define the arguments for the attack
     att_args = copy.deepcopy(args)
-    att_args.dataset = DataSet.PUBMED
+    if args.dataset == 'pubmed':
+        att_args.dataset = DataSet.PUBMED
+    if args.dataset == 'citeseer':
+        att_args.dataset = DataSet.CITESEER
+    if args.dataset == 'cora':
+        att_args.dataset = DataSet.CORA
 
     # create attack instance based on the arguments
     attack = att_args.attMode.getAttack()
@@ -61,7 +66,8 @@ def main():
     attack_model = attack.defineWrapper(att_args)
 
     # Load the data set:
-    if args.dataset == 'pubmed':
+    if args.dataset == 'pubmed' or 'citeseer' or 'cora':
+        print(f"current dataset is {args.dataset}")
         dataset_path = os.path.join(getGitPath(), 'datasets')
         dataset = Planetoid(dataset_path, args.dataset, transform=T.NormalizeFeatures())
         num_nodes = dataset.data.num_nodes
@@ -69,6 +75,7 @@ def main():
         edges = dataset.data.edge_index
     train_loader = DataLoader(dataset, batch_size=args.batch, shuffle=True, drop_last=True,
                               num_workers=4, pin_memory=True)
+
 
     # Define the defense model:
     num_hops = 2
