@@ -58,7 +58,12 @@ def main():
         for seed in [100, 200, 300, 400, 500]:
             for lam in [0, 1.25, 1.75]:
                 for m in ['GINConv', 'GCNConv', 'GATConv', 'ChebConv']:
-                    output_filename = 'dataset_' + dataset_var + '.lam_' + str(lam) + '.seed_' + str(seed) + '.GALconv_' + m + '_NOT_SINGLE.txt'
+                    if args.SINGLE:
+                        single_in_filename = "WITH_SINGLE"
+                    else:
+                        single_in_filename = "NOT_SINGLE"
+                    output_filename = f"dataset_{dataset_var}.lam_{str(lam)}.seed_{str(seed)}." \
+                                      f"GALconv_{m}_{single_in_filename}.txt"
                     sys.stdout = open(output_filename, 'w')
                     std_out.write('starting with ' + output_filename + ' run.\n')
                     args.seed = seed
