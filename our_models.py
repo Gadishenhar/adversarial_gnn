@@ -643,11 +643,22 @@ class Net(torch.nn.Module):
         self.data = data
         self.edge_index = edge_index
         self.edge_weight = edge_weight
+        self.dropout = torch.nn.Dropout(0.5)
+        self.maxpool = torch.nn.MaxPool1d(kernel_size=4)
         #print(type(self.edge_index))
         # self.edge_weight = self.data.edge_attr
         if (name == 'GCNConv'):
-            self.conv1 = GCNConv(self.data.num_features, 128)
-            self.conv2 = GCNConv(128, 64)
+            ## Old (original GAL) version:
+            # self.conv1 = GCNConv(self.data.num_features, 128)
+            # self.conv2 = GCNConv(128, 64)
+
+            ## Our version:
+            self.conv1 = GCNConv(self.data.num_features, 384)
+            self.conv2 = GCNConv(384, 256)
+            self.conv3 = GCNConv(256, 192)
+            self.conv4 = GCNConv(192, 128)
+            self.conv5 = GCNConv(128, 96)
+            self.conv6 = GCNConv(96, 64)
         elif (name == 'ChebConv'):
             self.conv1 = ChebConv(self.data.num_features, 128, K=2)
             self.conv2 = ChebConv(128, 64, K=2)
@@ -678,9 +689,22 @@ class Net(torch.nn.Module):
                 x3 = F.relu(self.conv2(x2.clone(), self.data.train_pos_edge_index.clone()), inplace=False)
                 y = self.bn2(x3.clone())
             else:
+            ## Old (original GAL) version:
+            #     x1 = self.conv1(self.data.x.clone(), self.data.train_pos_edge_index.clone())
+            #     x2 = F.relu(x1, inplace=False)
+            #     y = self.conv2(x2.clone(), self.data.train_pos_edge_index.clone())
+
+            ## Our version:
                 x1 = self.conv1(self.data.x.clone(), self.data.train_pos_edge_index.clone())
-                x2 = F.relu(x1, inplace=False)
-                y = self.conv2(x2.clone(), self.data.train_pos_edge_index.clone())
+                # x2 = self.maxpool(x1.clone())
+                x3 = self.dropout(x1.clone())
+                x4 = self.conv2(x3.clone(), self.data.train_pos_edge_index.clone())
+                # x5 = self.maxpool(x4.clone())
+                x6 = self.dropout(x4.clone())
+                x7 = self.conv3(x6.clone(), self.data.train_pos_edge_index.clone())
+                x8 = self.conv4(x7.clone(), self.data.train_pos_edge_index.clone())
+                x9 = self.conv5(x8.clone(), self.data.train_pos_edge_index.clone())
+                y = self.conv6(x9.clone(), self.data.train_pos_edge_index.clone())
 
             attr = self.attr(y.clone(), self.edge_index, self.edge_weight)
 
