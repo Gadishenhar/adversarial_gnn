@@ -24,6 +24,7 @@ from torch.cuda import set_device
 import copy
 from classes.basic_classes import DatasetType, DataSet
 
+print(os.getcwd())
 
 def main():
     parser = ArgumentParser()
@@ -49,6 +50,7 @@ def main():
     parser.add_argument("-seed", dest="seed", type=int, default=0, required=False)
     parser.add_argument('-gpu', dest="gpu", type=int, required=False)
     parser.add_argument("-lam", dest="lam", default=1.25, required=False)
+    parser.add_argument("-SINGLE", dest="SINGLE", default=False, type=bool, required=False)
     args = parser.parse_args()
 
     # define the arguments for the attack
@@ -61,9 +63,12 @@ def main():
         att_args.dataset = DataSet.CORA
 
     # create attack instance based on the arguments
-    attack = att_args.attMode.getAttack()
-    attack = attack(att_args)
-    attack_model = attack.defineWrapper(att_args)
+    if args.SINGLE:
+        attack = att_args.attMode.getAttack()
+        attack = attack(att_args)
+        attack_model = attack.defineWrapper(att_args)
+    else:
+        attack_model = None
 
     # Load the data set:
     if args.dataset == 'pubmed' or 'citeseer' or 'cora':

@@ -664,8 +664,10 @@ class Net(torch.nn.Module):
 
         self.attr = GCNConv(64, num_classes, cached=True)
 
-        # self.attack = GCNConv(64, num_classes, cached=True) # The previous attack - works
-        self.attack = attack
+        if attack == None:
+            self.attack = GCNConv(64, num_classes, cached=True) # The previous attack - works
+        else:
+            self.attack = attack
         self.reverse = GradientReversalLayer()
 
     def forward(self, pos_edge_index, neg_edge_index):
@@ -683,7 +685,10 @@ class Net(torch.nn.Module):
             attr = self.attr(y.clone(), self.edge_index, self.edge_weight)
 
             attack = self.reverse(y)
-            att = self.attack(attack.clone())
+            if isinstance(self.attack, GCNConv):
+                att = self.attack(attack, self.edge_index, self.edge_weight)
+            else:
+                att = self.attack(attack.clone())
 
             total_edge_index = torch.cat([pos_edge_index, neg_edge_index], dim=-1)
             x_j = torch.index_select(y, 0, total_edge_index[0])
