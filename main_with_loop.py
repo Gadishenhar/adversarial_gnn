@@ -54,7 +54,7 @@ def main():
     args = parser.parse_args()
     std_out = sys.stdout
     # GAL paper loops the following parameters. For our checking we will use first seed=100 lam=1.25 and m=GCNConv
-    for dataset_var in ['pubmed', 'citeseer', 'cora']:
+    for dataset_var in ['pubmed', 'cora', 'citeseer']:
         for seed in [100, 200, 300, 400, 500]:
             for lam in [0, 1.25, 1.75]:
                 for m in ['GINConv', 'GCNConv', 'GATConv', 'ChebConv']:
@@ -302,7 +302,7 @@ def main():
                         return accs
 
                     best_val_acc = test_acc = 0
-                    for epoch in range(1, args.finetune_epochs + 1):
+                    for epoch in range(1, int(args.finetune_epochs) + 1):
                         train_attr()
                         train_acc, val_acc, tmp_test_acc = test_attr()
                         if val_acc > best_val_acc:

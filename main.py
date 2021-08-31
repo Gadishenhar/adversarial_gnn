@@ -171,12 +171,12 @@ def main():
             dict(params=model.conv2.parameters(), weight_decay=5e-4),
             dict(params=model.bn2.parameters(), weight_decay=0),
             dict(params=model.attack.parameters(), weight_decay=5e-4),
-        ], lr=args.lr * args.lambda_reg)
+        ], lr=args.lr * float(args.lambda_reg))
     else:
         optimizer_att = torch.optim.Adam([
             dict(params=model.conv2.parameters(), weight_decay=5e-4),
             dict(params=model.attack.parameters(), weight_decay=5e-4),
-        ], lr=args.lr * args.lambda_reg)
+        ], lr=args.lr * float(args.lambda_reg))
 
     def get_link_labels(pos_edge_index, neg_edge_index):
         link_labels = torch.zeros(pos_edge_index.size(1) +
@@ -289,7 +289,7 @@ def main():
         return accs
 
     best_val_acc = test_acc = 0
-    for epoch in range(1, args.finetune_epochs + 1):
+    for epoch in range(1, int(args.finetune_epochs) + 1):
         train_attr()
         train_acc, val_acc, tmp_test_acc = test_attr()
         if val_acc > best_val_acc:
