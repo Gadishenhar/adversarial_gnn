@@ -23,3 +23,7 @@ Keep in mind that the -SINGLE flag should be changed to 0 if you do not want to 
 ```buildoutcfg
 ./main.py -SINGLE 1 -num_epochs 50 -finetune_epochs 10 -dataset cora -GAL_gnn_type ChebConv```
 ```
+
+## Sources
+For the original GAL paper, see: https://arxiv.org/abs/2009.13504
+For the original SINGLE paper, see: https://arxiv.org/abs/2011.03574
