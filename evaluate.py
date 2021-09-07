@@ -70,8 +70,6 @@ def main():
                     args.lam = lam
                     args.GAL_gnn_type = m
                     args.dataset = dataset_var
-                    #lam = args.lam
-                    # define the arguments for the attack
                     att_args = copy.deepcopy(args)
                     if dataset_var == 'pubmed':
                         att_args.dataset = DataSet.PUBMED
