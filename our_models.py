@@ -656,41 +656,33 @@ class Net(torch.nn.Module):
             self.conv1 = GCNConv(self.data.num_features, 128)
             self.conv2 = GCNConv(128, 96)
             self.conv3 = GCNConv(96, 64)
-
-            ## Prev version:
-            # self.conv1 = GCNConv(self.data.num_features, 384)
-            # self.conv2 = GCNConv(384, 256)
-            # self.conv3 = GCNConv(256, 192)
-            # self.conv4 = GCNConv(192, 128)
-            # self.conv5 = GCNConv(128, 96)
-            # self.conv6 = GCNConv(96, 64)
         elif (name == 'ChebConv'):
+            ## Old (original GAL) version:
+            # self.conv1 = ChebConv(self.data.num_features, 128, K=2)
+            # self.conv2 = ChebConv(128, 64, K=2)
+
             # New version:
             self.conv1 = ChebConv(self.data.num_features, 128, K=2)
             self.conv2 = ChebConv(128, 96, K=2)
             self.conv3 = ChebConv(96, 64, K=2)
-
-            # Prev version:
-            # self.conv1 = ChebConv(self.data.num_features, 384, K=2)
-            # self.conv2 = ChebConv(384, 256, K=2)
-            # self.conv3 = ChebConv(256, 192,K=2)
-            # self.conv4 = ChebConv(192, 128, K=2)
-            # self.conv5 = ChebConv(128, 96, K=2)
-            # self.conv6 = ChebConv(96, 64, K=2)
         elif (name == 'GATConv'):
+            ## Old (original GAL) version:
+            # self.conv1 = GATConv(self.data.num_features, 128)
+            # self.conv2 = GATConv(128, 64)
+
             # New version:
             self.conv1 = GATConv(self.data.num_features, 128)
             self.conv2 = GATConv(128, 96)
             self.conv3 = GATConv(96, 64)
-
-            # Prev version:
-            # self.conv1 = GATConv(self.data.num_features, 384)
-            # self.conv2 = GATConv(384, 256)
-            # self.conv3 = GATConv(256, 192)
-            # self.conv4 = GATConv(192, 128)
-            # self.conv5 = GATConv(128, 96)
-            # self.conv6 = GATConv(96, 64)
         elif (name == 'GINConv'):
+            ## Old (original GAL) version:
+            # nn1 = Sequential(Linear(self.data.num_features, 128), ReLU(inplace=False), Linear(128, 64))
+            # self.conv1 = GINConv(nn1)
+            # self.bn1 = torch.nn.BatchNorm1d(64)
+            # nn2 = Sequential(Linear(64, 64), ReLU(inplace=False), Linear(64, 64))
+            # self.conv2 = GINConv(nn2)
+            # self.bn2 = torch.nn.BatchNorm1d(64)
+
             # New version:
             nn1 = Sequential(Linear(self.data.num_features, 128), ReLU(inplace=False), Linear(128, 64))
             self.conv1 = GINConv(nn1)
@@ -698,17 +690,6 @@ class Net(torch.nn.Module):
             nn2 = Sequential(Linear(64, 64), ReLU(inplace=False), Linear(64, 64))
             self.conv2 = GINConv(nn2)
             self.bn2 = torch.nn.BatchNorm1d(64)
-
-            # Prev version:
-            # nn1 = Sequential(Linear(self.data.num_features, 384), ReLU(inplace=False), Linear(384, 256))
-            # self.conv1 = GINConv(nn1)
-            # self.bn1 = torch.nn.BatchNorm1d(256)
-            # nn2 = Sequential(Linear(256, 192), ReLU(inplace=False), Linear(192, 128))
-            # self.conv2 = GINConv(nn2)
-            # self.bn2 = torch.nn.BatchNorm1d(128)
-            # nn3 = Sequential(Linear(128, 96), ReLU(inplace=False), Linear(96, 64))
-            # self.conv3 = GINConv(nn3)
-            # self.bn3 = torch.nn.BatchNorm1d(64)
 
         self.attr = GCNConv(64, num_classes, cached=True)
 
@@ -733,31 +714,17 @@ class Net(torch.nn.Module):
                 x3 = self.dropout(x2)
                 x4 = F.relu(self.conv2(x3.clone(), self.data.train_pos_edge_index.clone()), inplace=False)
                 y = self.bn2(x4.clone())
-
-                # Prev version:
-                # x1 = F.relu(self.conv1(self.data.x.clone(), self.data.train_pos_edge_index.clone()), inplace=False)
-                # x2 = self.bn1(x1.clone())
-                # x3 = F.relu(self.conv2(x2.clone(), self.data.train_pos_edge_index.clone()), inplace=False)
-                # x4 = self.bn2(x3.clone())
-                # x5 = F.relu(self.conv3(x4.clone(), self.data.train_pos_edge_index.clone()), inplace=False)
-                # y = self.bn3(x5.clone())
             else:
                 # Old (original GAL) version:
-                    x1 = self.conv1(self.data.x.clone(), self.data.train_pos_edge_index.clone())
-                    x2 = F.relu(x1, inplace=False)
-                    x3 = self.conv2(x2.clone(), self.data.train_pos_edge_index.clone())
-                    x4 = F.relu(x3, inplace=False)
-                    y = self.conv3(x4.clone(), self.data.train_pos_edge_index.clone())
+                #     x = F.relu(self.conv1(data.x, data.train_pos_edge_index))
+                #     y = self.conv2(x, data.train_pos_edge_index)
 
                 # Our version:
-                # x1 = self.conv1(self.data.x.clone(), self.data.train_pos_edge_index.clone())
-                # x2 = self.dropout(x1.clone())
-                # x3 = self.conv2(x2.clone(), self.data.train_pos_edge_index.clone())
-                # x4 = self.dropout(x3.clone())
-                # x5 = self.conv3(x4.clone(), self.data.train_pos_edge_index.clone())
-                # x6 = self.conv4(x5.clone(), self.data.train_pos_edge_index.clone())
-                # x7 = self.conv5(x6.clone(), self.data.train_pos_edge_index.clone())
-                # y = self.conv6(x7.clone(), self.data.train_pos_edge_index.clone())
+                x1 = self.conv1(self.data.x.clone(), self.data.train_pos_edge_index.clone())
+                x2 = F.relu(x1, inplace=False)
+                x3 = self.conv2(x2.clone(), self.data.train_pos_edge_index.clone())
+                x4 = F.relu(x3, inplace=False)
+                y = self.conv3(x4.clone(), self.data.train_pos_edge_index.clone())
 
             attr = self.attr(y.clone(), self.edge_index, self.edge_weight)
 
