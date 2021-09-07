@@ -26,33 +26,33 @@ from classes.basic_classes import DatasetType, DataSet
 
 print(os.getcwd())
 
-def main():
-    parser = ArgumentParser()
-    parser.add_argument("-num_relations", dest="num_relations", default=5, required=False)
-    parser.add_argument("-num_weights", dest="num_weights", default=2, required=False)
-    parser.add_argument("-num_layers", dest="num_layers", default=2, required=False)
-    parser.add_argument("-GAL_gnn_type", dest="GAL_gnn_type", default='GCNConv', required=False)
-    parser.add_argument("-dataset", dest="dataset", default='pubmed', required=False)
-    parser.add_argument("-batch", dest="batch", default=256, required=False)
-    parser.add_argument("-lr", dest="lr", default=0.01, required=False)
-    parser.add_argument("-use_gdc", dest="use_gdc", default=False, required=False)
-    parser.add_argument("-num_epochs", dest="num_epochs", default=50, required=False)
-    parser.add_argument("-finetune_epochs", dest="finetune_epochs", default=10, required=False)
-    parser.add_argument("-attMode", dest="attMode", default=AttackMode.NODE, type=AttackMode.from_string,
-                        choices=list(AttackMode), required=False)
-    parser.add_argument('-singleGNN', dest="singleGNN", type=GNN_TYPE.from_string, choices=list(GNN_TYPE),
-                        required=False)
-    parser.add_argument("-patience", dest="patience", default=20, type=int, required=False)
-    parser.add_argument("-attEpochs", dest="attEpochs", default=20, type=int, required=False)
-    parser.add_argument("-l_inf", dest="l_inf", type=float, default=None, required=False)
-    parser.add_argument('-targeted', dest="targeted", action='store_true', required=False)
-    parser.add_argument("-distance", dest='distance', type=int, required=False)
-    parser.add_argument("-seed", dest="seed", type=int, default=0, required=False)
-    parser.add_argument('-gpu', dest="gpu", type=int, required=False)
-    parser.add_argument("-lam", dest="lam", default=1.25, required=False)
-    parser.add_argument("-SINGLE", dest="SINGLE", default=False, type=bool, required=False)
-    args = parser.parse_args()
-
+def main(args=None):
+    if args is None:
+        parser = ArgumentParser()
+        parser.add_argument("-num_relations", dest="num_relations", default=5, required=False)
+        parser.add_argument("-num_weights", dest="num_weights", default=2, required=False)
+        parser.add_argument("-num_layers", dest="num_layers", default=2, required=False)
+        parser.add_argument("-GAL_gnn_type", dest="GAL_gnn_type", default='GCNConv', required=False)
+        parser.add_argument("-dataset", dest="dataset", default='pubmed', required=False)
+        parser.add_argument("-batch", dest="batch", default=256, required=False)
+        parser.add_argument("-lr", dest="lr", default=0.01, required=False)
+        parser.add_argument("-use_gdc", dest="use_gdc", default=False, required=False)
+        parser.add_argument("-num_epochs", dest="num_epochs", default=50, required=False)
+        parser.add_argument("-finetune_epochs", dest="finetune_epochs", default=10, required=False)
+        parser.add_argument("-attMode", dest="attMode", default=AttackMode.NODE, type=AttackMode.from_string,
+                            choices=list(AttackMode), required=False)
+        parser.add_argument('-singleGNN', dest="singleGNN", type=GNN_TYPE.from_string, choices=list(GNN_TYPE),
+                            required=False)
+        parser.add_argument("-patience", dest="patience", default=20, type=int, required=False)
+        parser.add_argument("-attEpochs", dest="attEpochs", default=20, type=int, required=False)
+        parser.add_argument("-l_inf", dest="l_inf", type=float, default=None, required=False)
+        parser.add_argument('-targeted', dest="targeted", action='store_true', required=False)
+        parser.add_argument("-distance", dest='distance', type=int, required=False)
+        parser.add_argument("-seed", dest="seed", type=int, default=0, required=False)
+        parser.add_argument('-gpu', dest="gpu", type=int, required=False)
+        parser.add_argument("-lam", dest="lam", default=1.25, required=False)
+        parser.add_argument("-SINGLE", dest="SINGLE", default=False, type=bool, required=False)
+        args = parser.parse_args()
     # define the arguments for the attack
     att_args = copy.deepcopy(args)
     if args.dataset == 'pubmed':
