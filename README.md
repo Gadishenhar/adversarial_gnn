@@ -1,4 +1,5 @@
 # GAL vs SINGLE
+This code compares previous defense and attack on GNN (see the sources under "Credits" below)
 
 ## Requirements
 This project is based on PyTorch 1.6.0 and the PyTorch Geometric library.
@@ -24,6 +25,6 @@ Keep in mind that the -SINGLE flag should be changed to 0 if you do not want to 
 ./main.py -SINGLE 1 -num_epochs 50 -finetune_epochs 10 -dataset cora -GAL_gnn_type ChebConv```
 ```
 
-## Sources
+## Credits
 For the original GAL paper, see: https://arxiv.org/abs/2009.13504
 For the original SINGLE paper, see: https://arxiv.org/abs/2011.03574
